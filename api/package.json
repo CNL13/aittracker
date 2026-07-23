@@ -1,0 +1,22 @@
+{
+  "name": "ait-api",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@ait/contracts": "*",
+    "@ait/validation": "*",
+    "@ait/domain": "*",
+    "@supabase/supabase-js": "^2.39.0",
+    "bcryptjs": "^3.0.3",
+    "postgres": "^3.4.3",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.16",
+    "@vercel/node": "^3.0.24"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  }
+}
