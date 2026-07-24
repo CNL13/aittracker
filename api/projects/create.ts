@@ -52,7 +52,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (memberIds.length > 0) {
       const activeUsers = await sql`
-        SELECT id, status FROM users WHERE id = ANY(${memberIds}::uuid[])
+        SELECT id, status FROM users WHERE id = ANY(${memberIds as any}::uuid[])
       `;
       const activeUserIds = new Set(activeUsers.filter((u: any) => u.status === 'active').map((u: any) => u.id));
       const invalidMemberId = memberIds.find((id) => !activeUserIds.has(id));

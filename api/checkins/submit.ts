@@ -38,7 +38,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: 'Admin edit reason is required for past check-ins' });
   }
 
-  const blockerTooShort = items.find((item) => {
+  const blockerTooShort = items.find((item: any) => {
     const details = item.blockerDetails?.trim();
     return details && details.length < 10;
   });
@@ -58,14 +58,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    await sql.begin(async (tx) => {
-      const uniqueTaskIds = Array.from(new Set(items.map((item) => item.taskId)));
+    await sql.begin(async (tx: any) => {
+      const uniqueTaskIds = Array.from(new Set(items.map((item: any) => item.taskId)));
       const eligibleRows = uniqueTaskIds.length > 0 ? await tx`
         SELECT t.id, t.status, t.percent_complete, tm.assignment_role
         FROM tasks t
         JOIN task_members tm ON tm.task_id = t.id
         JOIN projects p ON p.id = t.project_id
-        WHERE t.id IN ${tx(uniqueTaskIds)}
+        WHERE t.id = ANY(${uniqueTaskIds}::uuid[])
           AND tm.user_id = ${session.user.id}
           AND tm.removed_at IS NULL
           AND tm.report_required = TRUE

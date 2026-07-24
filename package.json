@@ -8,6 +8,8 @@
     "packages/*"
   ],
   "scripts": {
+    "postinstall": "npm run build -w packages/contracts && npm run build -w packages/validation && npm run build -w packages/domain",
+    "build": "npm run build:all",
     "dev:web": "npm run dev -w apps/web",
     "build:web": "npm run build -w apps/web",
     "build:all": "npm run build -w packages/contracts && npm run build -w packages/validation && npm run build -w packages/domain && npm run build -w apps/web",
