@@ -29,6 +29,15 @@ export default function TaskBoardView({
   const [projectMembers, setProjectMembers] = useState<ProjectMember[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [search]);
+
   const [selectedProjectId, setSelectedProjectId] = useState(fixedProjectId || '');
   const [onlyMine, setOnlyMine] = useState(false);
   const [viewMode, setViewMode] = useState<'list' | 'kanban'>('list');
@@ -158,7 +167,7 @@ export default function TaskBoardView({
     setLoading(true);
     try {
       const query = new URLSearchParams({
-        search: search.trim(),
+        search: debouncedSearch.trim(),
         limit: '200',
       });
       const pId = fixedProjectId || selectedProjectId;
@@ -180,7 +189,7 @@ export default function TaskBoardView({
     } finally {
       setLoading(false);
     }
-  }, [search, selectedProjectId, fixedProjectId, onlyMine, fetchProjectMembers]);
+  }, [debouncedSearch, selectedProjectId, fixedProjectId, onlyMine, fetchProjectMembers]);
 
   useEffect(() => {
     fetchProjects();

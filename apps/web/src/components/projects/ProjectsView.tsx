@@ -21,6 +21,14 @@ export default function ProjectsView({ auth }: { auth: AuthContextType }) {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [search]);
   const [status, setStatus] = useState('');
   const [page, setPage] = useState(1);
   const limit = 6;
@@ -107,7 +115,7 @@ export default function ProjectsView({ auth }: { auth: AuthContextType }) {
     setLoading(true);
     try {
       const query = new URLSearchParams({
-        search: search.trim(),
+        search: debouncedSearch.trim(),
         status,
         page: String(page),
         limit: String(limit),
@@ -122,7 +130,7 @@ export default function ProjectsView({ auth }: { auth: AuthContextType }) {
       console.error(e);
     }
     setLoading(false);
-  }, [search, status, page]);
+  }, [debouncedSearch, status, page]);
 
   useEffect(() => {
     fetchProjects();
