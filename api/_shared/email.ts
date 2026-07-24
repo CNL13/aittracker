@@ -121,7 +121,7 @@ export async function sendEmail({
   let validUserId: string | null = null;
   if (isUuid) {
     const check = await sql`SELECT id FROM users WHERE id = ${recipientUserId}::uuid LIMIT 1`;
-    if (check.length > 0) validUserId = check[0].id;
+    if (check[0]?.id) validUserId = check[0].id;
   }
   if (!validUserId) {
     const defaultUser = await sql`SELECT id FROM users LIMIT 1`;

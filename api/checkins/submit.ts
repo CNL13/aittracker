@@ -168,7 +168,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           `;
           const itemId = itemRes[0]!.id;
 
-          const isOwner = participant?.assignment_role === 'owner';
+          const isOwner = (participant as any)?.assignment_role === 'owner';
 
           if ((isOwner || session.user.role === 'admin') && (storedPercent !== null || proposedStatus)) {
             if (proposedStatus === 'done') {
