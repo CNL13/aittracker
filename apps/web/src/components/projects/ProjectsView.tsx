@@ -13,6 +13,7 @@ import {
   User, Task, TaskStatus, TaskPriority, TaskBlocker, TaskMember, AuthSession, AuthContextType, Project, ProjectMember
 } from '../../types';
 import CreateProjectModal from './CreateProjectModal';
+import EditProjectModal from './EditProjectModal';
 
 export default function ProjectsView({ auth }: { auth: AuthContextType }) {
 
@@ -25,6 +26,7 @@ export default function ProjectsView({ auth }: { auth: AuthContextType }) {
   const limit = 6;
 
   const [createModal, setCreateModal] = useState(false);
+  const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [approvingProjectId, setApprovingProjectId] = useState('');
   const [projectActionError, setProjectActionError] = useState('');
@@ -259,6 +261,16 @@ export default function ProjectsView({ auth }: { auth: AuthContextType }) {
                           </button>
                         </>
                       )}
+                      {(isAdmin || project.managerId === auth.user?.id) && (
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setEditingProject(project); }}
+                          title="Chỉnh sửa dự án"
+                          className="p-1 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 hover:bg-indigo-500/20 transition-colors"
+                        >
+                          <Edit2 className="h-3 w-3" />
+                        </button>
+                      )}
                       {isAdmin && (
                         <button
                           type="button"
@@ -378,6 +390,17 @@ export default function ProjectsView({ auth }: { auth: AuthContextType }) {
           onClose={() => setCreateModal(false)}
           onSuccess={() => {
             setCreateModal(false);
+            fetchProjects();
+          }}
+        />
+      )}
+
+      {editingProject && (
+        <EditProjectModal
+          project={editingProject}
+          onClose={() => setEditingProject(null)}
+          onSuccess={() => {
+            setEditingProject(null);
             fetchProjects();
           }}
         />

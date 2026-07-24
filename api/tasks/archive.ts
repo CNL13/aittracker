@@ -21,14 +21,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const { user } = sessionContext;
-    const { taskId } = req.query;
+    const targetTaskId = req.body?.taskId || req.query?.taskId;
 
-    if (!taskId || typeof taskId !== 'string') {
+    if (!targetTaskId || typeof targetTaskId !== 'string') {
       return res.status(400).json({ error: 'Missing or invalid taskId' });
     }
 
+    const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+    if (!uuidRegex.test(targetTaskId)) {
+      return res.status(400).json({ error: 'Task ID must be a valid UUID' });
+    }
+
     if (user.role !== 'admin') {
-      // Allow project manager to archive tasks in their projects
+      // Allow project manager or task creator/owner to archive tasks
       const pmCheck = await sql`
         SELECT p.manager_id, t.status, t.percent_complete, t.created_by,
                (SELECT tm.user_id FROM task_members tm WHERE tm.task_id = t.id AND tm.assignment_role = 'owner' AND tm.removed_at IS NULL LIMIT 1) as "ownerId",
@@ -40,18 +45,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                ) as is_task_member
         FROM tasks t
         JOIN projects p ON p.id = t.project_id
-        WHERE t.id = ${taskId}
+        WHERE t.id = ${targetTaskId}::uuid
       `;
       const permissionTask = pmCheck[0];
       const canManageTask = permissionTask?.manager_id === user.id;
       const isOwnTodoTask =
         permissionTask?.status === 'todo' &&
-        Number(permissionTask?.percent_complete || 0) === 0 &&
         (
           permissionTask?.created_by === user.id ||
           permissionTask?.ownerId === user.id ||
           permissionTask?.is_task_member === true ||
-          permissionTask?.is_task_member === 1
+          permissionTask?.is_task_member === 1 ||
+          Boolean(permissionTask?.is_task_member)
         );
       if (!permissionTask || (!canManageTask && !isOwnTodoTask)) {
         return res.status(403).json({ error: 'Bạn không có quyền lưu trữ công việc này.' });
@@ -59,7 +64,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // Check existence and already archived
-    const taskRes = await sql`SELECT archived_at FROM tasks WHERE id = ${taskId}`;
+    const taskRes = await sql`SELECT archived_at FROM tasks WHERE id = ${targetTaskId}::uuid`;
     if (taskRes.length === 0) {
       return res.status(404).json({ error: 'Task not found' });
     }
@@ -77,12 +82,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       await sqlTrans`
         UPDATE tasks
         SET archived_at = CURRENT_TIMESTAMP
-        WHERE id = ${taskId}
+        WHERE id = ${targetTaskId}::uuid
       `;
 
       await sqlTrans`
         INSERT INTO activity_logs (actor_id, actor_type, entity_type, entity_id, action)
-        VALUES (${user.id}, 'user', 'task', ${taskId}, 'archive_task')
+        VALUES (${user.id}, 'user', 'task', ${targetTaskId}::uuid, 'archive_task')
       `;
     });
 

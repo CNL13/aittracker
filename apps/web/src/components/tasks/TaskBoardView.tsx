@@ -375,7 +375,7 @@ export default function TaskBoardView({
   };
 
   const handleArchiveTask = async (task: any) => {
-    setActiveStatusPopoverTaskId(null);
+    setActivePopover(null);
     if (task.status !== 'todo') return;
     const confirmed = window.confirm(`Xóa task "${task.title}" khỏi việc cần làm?`);
     if (!confirmed) return;

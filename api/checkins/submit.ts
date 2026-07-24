@@ -3,6 +3,7 @@ import { sql } from '../_shared/db.js';
 import { getSession } from '../_shared/auth.js';
 import { currentDateInBusinessTz, rejectInvalidMutation } from '../_shared/http.js';
 import { submitCheckInSchema } from '@ait/validation';
+import { sendLateCheckInEmailNotification } from '../_shared/email.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
@@ -43,6 +44,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   });
   if (blockerTooShort) {
     return res.status(400).json({ error: 'Blocker details must be at least 10 characters' });
+  }
+
+  // Submission window rules
+  const now = new Date();
+  const currentHour = now.getHours();
+  const currentMinute = now.getMinutes();
+  const timeInMinutes = currentHour * 60 + currentMinute;
+  const isLateSubmission = timeInMinutes > 21 * 60 + 30 || targetDate < todayStr;
+  
+  if (timeInMinutes < 8 * 60) {
+    return res.status(400).json({ error: 'Báo cáo chỉ được nộp từ 08:00 đến 21:30.' });
   }
 
   try {
@@ -113,6 +125,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const checkinId = upsertRes[0]?.id || existing[0]?.id;
       if (!checkinId) {
         throw new Error('Failed to persist daily check-in');
+      }
+
+      if (isLateSubmission) {
+         // Run async, don't wait to block response
+         sendLateCheckInEmailNotification(session.user, data).catch(console.error);
       }
 
       await tx`

@@ -524,7 +524,7 @@ export default function ProjectDetailView({ auth }: { auth: AuthContextType }) {
           >
             Quay lại
           </button>
-          {isAdmin && (
+          {canManage && (
             <button
               onClick={() => setEditModal(true)}
               className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-lg shadow-indigo-600/10 flex items-center gap-2 transition-colors"
@@ -1031,6 +1031,16 @@ export default function ProjectDetailView({ auth }: { auth: AuthContextType }) {
         </div>
       )}
 
+      {editModal && project && (
+        <EditProjectModal
+          project={project}
+          onClose={() => setEditModal(false)}
+          onSuccess={() => {
+            setEditModal(false);
+            fetchProjectDetails();
+          }}
+        />
+      )}
     </div>
   );
 }

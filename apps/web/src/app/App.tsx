@@ -1,6 +1,6 @@
 /* eslint-disable */
 // @ts-nocheck
-import React, { useState, useEffect, useCallback, createContext } from 'react';
+import React, { useState, useEffect, useCallback, createContext, Suspense } from 'react';
 import {
   HashRouter,
   Routes,
@@ -20,16 +20,17 @@ import MemberLayout from '../components/layout/MemberLayout';
 import LoginView from '../views/LoginView';
 import ChangePasswordView from '../views/ChangePasswordView';
 import MemberHomeView from '../views/MemberHomeView';
-import CombinedLogsView from '../views/CombinedLogsView';
-import AdminReportsView from '../views/AdminReportsView';
+// Heavy Views
+const CombinedLogsView = React.lazy(() => import('../views/CombinedLogsView'));
+const AdminReportsView = React.lazy(() => import('../views/AdminReportsView'));
+const ProjectsView = React.lazy(() => import('../components/projects/ProjectsView'));
+const CalendarView = React.lazy(() => import('./CalendarView'));
+const CheckInView = React.lazy(() => import('./CheckInView'));
 
 // Components & Views from app/ and components/
 import AdminUsersView from '../components/personnel/AdminUsersView';
 import MemberPersonnelView from '../components/personnel/MemberPersonnelView';
-import ProjectsView from '../components/projects/ProjectsView';
 import ProjectDetailView from '../components/projects/ProjectDetailView';
-import CalendarView from './CalendarView';
-import CheckInView from './CheckInView';
 
 export default function App() {
   const [authState, setAuthState] = useState<{
@@ -106,7 +107,13 @@ export default function App() {
 
   return (
     <HashRouter>
-      <Routes>
+      <Suspense fallback={
+        <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-slate-200">
+          <Loader2 className="h-8 w-8 text-indigo-500 animate-spin mb-4" />
+          <p className="text-sm font-medium text-slate-400">Đang tải...</p>
+        </div>
+      }>
+        <Routes>
         <Route
           path="/login"
           element={
@@ -276,7 +283,8 @@ export default function App() {
         
         <Route path="/check-in" element={ authState.user ? ( authState.user.mustChangePassword ? ( <Navigate to="/change-password" replace /> ) : authState.user.role === 'admin' ? ( <Navigate to="/admin/reports" replace /> ) : ( <MemberLayout auth={authContextValue}> <CheckInView auth={authContextValue} /> </MemberLayout> ) ) : ( <Navigate to="/login" replace /> ) } />
         <Route path="*" element={<Navigate to="/login" replace />} />
-      </Routes>
+        </Routes>
+      </Suspense>
     </HashRouter>
   );
 }
