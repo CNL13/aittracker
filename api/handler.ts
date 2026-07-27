@@ -188,7 +188,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(404).json({ error: 'Not Found' });
   }
 
-  const routeKey = match[1];
+  const routeKey = match[1] as string;
 
   // Look up the handler in the route map
   const routeHandler = routes[routeKey];
