@@ -46,3 +46,31 @@ Desktop.ini
 # Vitest/Coverage
 coverage/
 .vitest/
+
+# Local dev state
+db_state.json
+
+# Debug/test scripts (not needed in production)
+scripts/debug-*.ts
+scripts/test-*.ts
+scripts/check-*.ts
+scripts/dump-*.ts
+scripts/inspect-*.ts
+scripts/pinpoint-*.ts
+scripts/fix-*.ts
+scripts/list-all.ts
+scripts/direct-schema.ts
+
+# Agent scaffolding (dev tooling, not production)
+.agents/
+prompts/
+tasks/
+artifacts/
+AGENTS.md
+PACKAGE-MANIFEST.json
+PACKAGE-VALIDATION.md
+PROJECT-INDEX.md
+START-HERE.md
+api-server.ts
+run_migration.ts
+verify.ps1
