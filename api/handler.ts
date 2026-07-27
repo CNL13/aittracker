@@ -180,17 +180,15 @@ const routes: Record<string, (req: VercelRequest, res: VercelResponse) => Promis
 };
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // Extract the route path from the catch-all parameter
-  const { path } = req.query;
+  // Extract the route path from the URL (remove /api/ prefix)
+  const url = req.url || '';
+  const match = url.match(/^\/api\/(.+?)(?:\?.*)?$/);
 
-  let routeKey: string;
-  if (Array.isArray(path)) {
-    routeKey = path.join('/');
-  } else if (typeof path === 'string') {
-    routeKey = path;
-  } else {
+  if (!match) {
     return res.status(404).json({ error: 'Not Found' });
   }
+
+  const routeKey = match[1];
 
   // Look up the handler in the route map
   const routeHandler = routes[routeKey];
@@ -207,3 +205,4 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(500).json({ error: 'Internal Server Error' });
   }
 }
+
