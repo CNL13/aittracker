@@ -46,10 +46,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: 'Blocker details must be at least 10 characters' });
   }
 
-  // Submission window rules
+  // Submission window rules — dùng giờ Việt Nam (UTC+7), không dùng UTC của server Vercel
   const now = new Date();
-  const currentHour = now.getHours();
-  const currentMinute = now.getMinutes();
+  const vnParts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Ho_Chi_Minh',
+    hour: 'numeric', minute: 'numeric', hour12: false
+  }).formatToParts(now);
+  const currentHour = parseInt(vnParts.find(p => p.type === 'hour')?.value || '0');
+  const currentMinute = parseInt(vnParts.find(p => p.type === 'minute')?.value || '0');
   const timeInMinutes = currentHour * 60 + currentMinute;
   const isLateSubmission = timeInMinutes > 21 * 60 + 30 || targetDate < todayStr;
   

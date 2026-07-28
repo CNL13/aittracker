@@ -154,7 +154,7 @@ export default function ProjectsView({ auth }: { auth: AuthContextType }) {
 
   const getManagerName = (managerId?: string | null) => {
     if (!managerId) return 'Không có';
-    if (managerId === auth.user?.id) return `${auth.user?.fullName} (Bn)`;
+    if (managerId === auth.user?.id) return `${auth.user?.fullName} (Bạn)`;
     const found = users.find((u) => u.id === managerId);
     return found ? found.fullName : `Thành viên (ID: ${managerId.substring(0, 8)})`;
   };
@@ -304,14 +304,14 @@ export default function ProjectsView({ auth }: { auth: AuthContextType }) {
                     </div>
                   </div>
 
-                  <p className="text-xs text-slate-400 line-clamp-2 h-8 leading-relaxed">
+                  <p className="text-xs text-slate-400 leading-relaxed" style={{ display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                     {project.description || 'Không có mô tả dự án.'}
                   </p>
                 </div>
 
                 <div className="mt-6 pt-4 border-t border-slate-900/60 space-y-2.5 text-[11px] text-slate-400">
                   <div className="flex justify-between">
-                    <span>Thi gian:</span>
+                    <span>Thời gian:</span>
                     <span className="font-semibold text-slate-300">
                       {project.startDate ? new Date(project.startDate).toLocaleDateString('vi-VN') : '-'}
                       {' - '}

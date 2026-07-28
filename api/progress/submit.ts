@@ -28,9 +28,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Check task exists and user is a member
     const taskRes = await sql`
-      SELECT t.id, t.project_id, t.percent_complete, t.status
+      SELECT t.id, t.project_id, t.percent_complete, t.status,
+             p.manager_id as project_manager_id
       FROM tasks t
       JOIN task_members tm ON tm.task_id = t.id AND tm.user_id = ${user.id} AND tm.removed_at IS NULL
+      JOIN projects p ON p.id = t.project_id
       WHERE t.id = ${taskId} AND t.archived_at IS NULL
     `;
 
@@ -42,7 +44,45 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: 'Task da hoan thanh 100% va khong can cap nhat tien do them.' });
     }
 
-    // Check no pending request for this task by this user
+    // AUTO-APPROVE: Admin hoặc Project Manager tự động được duyệt ngay, không cần chờ
+    const isAdminOrPM = user.role === 'admin' || task.project_manager_id === user.id;
+    if (isAdminOrPM) {
+      const approvedPercent = proposedPercent;
+      await sql.begin(async (tx: any) => {
+        const result = await tx`
+          INSERT INTO progress_updates (task_id, submitted_by, proposed_percent, description, evidence_url, status, reviewed_by, reviewed_at, final_percent)
+          VALUES (${taskId}, ${user.id}, ${approvedPercent}, ${description || null}, ${evidenceUrl || null},
+                  'approved', ${user.id}, CURRENT_TIMESTAMP, ${approvedPercent})
+          RETURNING id
+        `;
+        await tx`
+          UPDATE tasks
+          SET percent_complete = ${approvedPercent},
+              status = CASE
+                WHEN ${approvedPercent} = 100 THEN 'done'::task_workflow_status
+                WHEN ${approvedPercent} > 0 THEN 'in_progress'::task_workflow_status
+                ELSE 'todo'::task_workflow_status
+              END,
+              completed_at = CASE WHEN ${approvedPercent} = 100 THEN CURRENT_TIMESTAMP ELSE NULL END,
+              version = version + 1,
+              updated_at = CURRENT_TIMESTAMP
+          WHERE id = ${taskId}
+        `;
+        await tx`
+          INSERT INTO activity_logs (actor_id, actor_type, entity_type, entity_id, action, new_values)
+          VALUES (${user.id}, 'user', 'task', ${taskId}, 'review_progress',
+            ${JSON.stringify({ action: 'approved', proposedPercent: approvedPercent, finalPercent: approvedPercent, autoApproved: true, submittedBy: user.id })}
+          )
+        `;
+      });
+      return res.status(201).json({
+        message: `Đã cập nhật & tự động phê duyệt tiến độ ${approvedPercent}%.`,
+        autoApproved: true,
+        approvedPercent,
+      });
+    }
+
+    // Nhân viên thường: kiểm tra không có request đang chờ duyệt
     const pendingRes = await sql`
       SELECT id FROM progress_updates
       WHERE task_id = ${taskId} AND submitted_by = ${user.id} AND status = 'pending'

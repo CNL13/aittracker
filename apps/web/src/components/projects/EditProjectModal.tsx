@@ -183,7 +183,7 @@ export default function EditProjectModal({ project, onClose, onSuccess }: { proj
               onClick={onClose}
               className="px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white text-xs font-semibold"
             >
-              Hy b
+              Hủy bỏ
             </button>
             <button
               type="submit"

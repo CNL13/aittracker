@@ -55,7 +55,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // 3. Check if project exists
     const projectRes = await sql`
-      SELECT status, archived_at, manager_id FROM projects WHERE id = ${projectId}
+      SELECT status, archived_at, manager_id, start_date, due_date FROM projects WHERE id = ${projectId}
     `;
     const project = projectRes[0];
     if (!project) {
@@ -63,6 +63,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
     if (project.status === 'completed' || project.status === 'archived' || project.archived_at) {
       return res.status(400).json({ error: 'Không thể tạo nhiệm vụ cho dự án đã hoàn thành hoặc đã bị lưu trữ.' });
+    }
+
+    // Validate task dueDate must be within project date range
+    if (dueDate) {
+      const projectStart = project.start_date ? String(project.start_date).substring(0, 10) : null;
+      const projectEnd = project.due_date ? String(project.due_date).substring(0, 10) : null;
+      const taskDue = String(dueDate).substring(0, 10);
+      if (projectStart && taskDue < projectStart) {
+        return res.status(400).json({ error: `Ngày hoàn thành của công việc không thể sớm hơn ngày bắt đầu dự án (${projectStart}).` });
+      }
+      if (projectEnd && taskDue > projectEnd) {
+        return res.status(400).json({ error: `Ngày hoàn thành của công việc (${taskDue}) vượt quá ngày kết thúc dự án (${projectEnd}).` });
+      }
     }
 
     if (parentId) {
