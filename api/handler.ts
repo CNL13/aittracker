@@ -181,20 +181,39 @@ const routes: Record<string, (req: VercelRequest, res: VercelResponse) => Promis
 };
 
 // Temporary debug handler
-async function debugHandler(req: VercelRequest, res: VercelResponse) {
+async function debugHandler(_req: VercelRequest, res: VercelResponse) {
   const info: any = {
     DATABASE_URL: process.env.DATABASE_URL ? `${process.env.DATABASE_URL.substring(0, 30)}...` : 'NOT SET',
-    SUPABASE_URL: process.env.SUPABASE_URL ? 'SET' : 'NOT SET',
     NODE_ENV: process.env.NODE_ENV || 'not set',
+    body: _req.body,
+    bodyType: typeof _req.body,
   };
   try {
-    const result = await sql`SELECT current_database() as db, current_user as usr, count(*) as user_count FROM users`;
-    info.db_connected = true;
-    info.db_result = result[0];
+    // Test 1: basic connection
+    const r1 = await sql`SELECT current_database() as db, count(*) as user_count FROM users`;
+    info.test1_ok = true;
+    info.test1 = r1[0];
+    
+    // Test 2: auth_login_attempts table
+    const r2 = await sql`SELECT COUNT(*)::int as count FROM auth_login_attempts WHERE normalized_username = ${'admin'}`;
+    info.test2_ok = true;
+    info.test2 = r2[0];
+    
+    // Test 3: user lookup (same query as login)
+    const r3 = await sql`
+      SELECT u.id, u.username, u.normalized_username, u.full_name, u.role, u.status, u.must_change_password,
+             uc.password_hash, uc.failed_login_count, uc.locked_until
+      FROM users u
+      LEFT JOIN user_credentials uc ON u.id = uc.user_id
+      WHERE u.normalized_username = ${'admin'}
+    `;
+    info.test3_ok = true;
+    info.test3_user = r3[0] ? { id: r3[0].id, username: r3[0].username, has_hash: !!r3[0].password_hash } : null;
+    
   } catch (err: any) {
-    info.db_connected = false;
-    info.db_error = err.message;
-    info.db_error_code = err.code;
+    info.error = err.message;
+    info.error_code = err.code;
+    info.error_stack = err.stack?.split('\n').slice(0, 5);
   }
   return res.status(200).json(info);
 }
