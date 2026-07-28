@@ -18,19 +18,18 @@ import MemberLayout from '../components/layout/MemberLayout';
 
 // Views
 import LoginView from '../views/LoginView';
-import ChangePasswordView from '../views/ChangePasswordView';
-import MemberHomeView from '../views/MemberHomeView';
-// Heavy Views
+
+// Lazy Loaded Views
+const ChangePasswordView = React.lazy(() => import('../views/ChangePasswordView'));
+const MemberHomeView = React.lazy(() => import('../views/MemberHomeView'));
 const CombinedLogsView = React.lazy(() => import('../views/CombinedLogsView'));
 const AdminReportsView = React.lazy(() => import('../views/AdminReportsView'));
 const ProjectsView = React.lazy(() => import('../components/projects/ProjectsView'));
 const CalendarView = React.lazy(() => import('./CalendarView'));
 const CheckInView = React.lazy(() => import('./CheckInView'));
-
-// Components & Views from app/ and components/
-import AdminUsersView from '../components/personnel/AdminUsersView';
-import MemberPersonnelView from '../components/personnel/MemberPersonnelView';
-import ProjectDetailView from '../components/projects/ProjectDetailView';
+const AdminUsersView = React.lazy(() => import('../components/personnel/AdminUsersView'));
+const MemberPersonnelView = React.lazy(() => import('../components/personnel/MemberPersonnelView'));
+const ProjectDetailView = React.lazy(() => import('../components/projects/ProjectDetailView'));
 
 export default function App() {
   const [authState, setAuthState] = useState<{

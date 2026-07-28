@@ -256,18 +256,38 @@ export default function CheckInView({ auth }: { auth: any }) {
     const customStr = validCustomTasks.map((ct) => `• ${ct.title}${ct.hasBlocker && ct.blockerDetails ? ` (🚨 Vướng mắc: ${ct.blockerDetails})` : ''}`).join('\n');
     const customBlockerStr = validCustomTasks.filter(ct => ct.hasBlocker && ct.blockerDetails).map(ct => `${ct.title}: ${ct.blockerDetails}`).join('; ');
 
-    try {
-      setSubmitting(true);
-      const payload = {
+    const payload = {
+      noActivity,
+      noActivityReason,
+      summaryToday: customStr,
+      generalDifficulties: customBlockerStr ? `🚨 ${customBlockerStr}` : '',
+      helpNeeded: '',
+      planTomorrow: '',
+      tasks: []
+    };
+
+    // --- OPTIMISTIC UI: Instantly give feedback ---
+    const previousContext = context;
+    setSuccessMsg('Nộp báo cáo công việc thành công!');
+    setIsFormCollapsed(true); // Auto-collapse form instantly
+    localStorage.removeItem(`checkin_draft_${auth?.user?.id}`);
+
+    // Update local context optimistically
+    setContext(prev => prev ? {
+      ...prev,
+      existingCheckIn: {
+        id: 'opt-' + Date.now(),
+        checkinDate: new Date().toISOString().split('T')[0],
         noActivity,
         noActivityReason,
         summaryToday: customStr,
         generalDifficulties: customBlockerStr ? `🚨 ${customBlockerStr}` : '',
-        helpNeeded: '',
-        planTomorrow: '',
-        tasks: []
-      };
+        submittedAt: new Date().toISOString()
+      }
+    } : null);
 
+    // Background API sync
+    try {
       const res = await fetch('/api/checkins/submit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -275,19 +295,23 @@ export default function CheckInView({ auth }: { auth: any }) {
       });
 
       if (res.ok) {
-        setSuccessMsg('Nộp báo cáo công việc thành công!');
-        localStorage.removeItem(`checkin_draft_${auth?.user?.id}`);
-        await fetchContext();
-        await fetchMatrixData();
-        setIsFormCollapsed(true); // Auto-collapse form after submit
+        // Silently refresh authoritative data
+        fetchContext();
+        fetchMatrixData();
       } else {
+        // Rollback on server error
         const d = await res.json();
-        setErrorMsg(d.error || 'Có lỗi xảy ra.');
+        setContext(previousContext);
+        setIsFormCollapsed(false);
+        setSuccessMsg('');
+        setErrorMsg(d.error || 'Có lỗi xảy ra khi nộp báo cáo. Đã khôi phục trạng thái.');
       }
     } catch (e) {
-      setErrorMsg('Lỗi kết nối mạng.');
-    } finally {
-      setSubmitting(false);
+      // Rollback on network failure
+      setContext(previousContext);
+      setIsFormCollapsed(false);
+      setSuccessMsg('');
+      setErrorMsg('Lỗi kết nối mạng. Không thể gửi báo cáo.');
     }
   };
 

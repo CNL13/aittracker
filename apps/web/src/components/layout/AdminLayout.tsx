@@ -61,6 +61,7 @@ export default function AdminLayout({ auth, children }: { auth: AuthContextType;
 
           <button
             onClick={() => navigate('/projects')}
+            onMouseEnter={() => import('../../components/projects/ProjectsView')}
             className={`w-full py-2.5 px-3 rounded-xl text-left text-xs font-medium flex items-center gap-2.5 transition-colors ${location.pathname.startsWith('/projects')
               ? 'bg-indigo-600/10 border border-indigo-500/20 text-indigo-400 font-semibold'
               : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/40 border border-transparent'
@@ -71,6 +72,7 @@ export default function AdminLayout({ auth, children }: { auth: AuthContextType;
           </button>
           <button
             onClick={() => navigate('/admin/reports')}
+            onMouseEnter={() => import('../../views/AdminReportsView')}
             className={`w-full py-2.5 px-3 rounded-xl text-left text-xs font-medium flex items-center gap-2.5 transition-colors ${location.pathname === '/admin/reports'
               ? 'bg-indigo-600/10 border border-indigo-500/20 text-indigo-400 font-semibold'
               : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/40 border border-transparent'
@@ -81,6 +83,7 @@ export default function AdminLayout({ auth, children }: { auth: AuthContextType;
           </button>
           <button
             onClick={() => navigate('/tasks')}
+            onMouseEnter={() => import('../../views/MemberHomeView')}
             className={`w-full py-2.5 px-3 rounded-xl text-left text-xs font-medium flex items-center gap-2.5 transition-colors ${location.pathname.startsWith('/tasks')
               ? 'bg-indigo-600/10 border border-indigo-500/20 text-indigo-400 font-semibold'
               : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/40 border border-transparent'
@@ -91,6 +94,7 @@ export default function AdminLayout({ auth, children }: { auth: AuthContextType;
           </button>
           <button
             onClick={() => navigate('/admin/users')}
+            onMouseEnter={() => import('../../components/personnel/AdminUsersView')}
             className={`w-full py-2.5 px-3 rounded-xl text-left text-xs font-medium flex items-center gap-2.5 transition-colors ${location.pathname === '/admin/users'
               ? 'bg-indigo-600/10 border border-indigo-500/20 text-indigo-400 font-semibold'
               : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/40 border border-transparent'
@@ -101,6 +105,7 @@ export default function AdminLayout({ auth, children }: { auth: AuthContextType;
           </button>
           <button
             onClick={() => navigate('/calendar')}
+            onMouseEnter={() => import('../../app/CalendarView')}
             className={`w-full py-2.5 px-3 rounded-xl text-left text-xs font-medium flex items-center gap-2.5 transition-colors ${location.pathname.startsWith('/calendar')
               ? 'bg-indigo-600/10 border border-indigo-500/20 text-indigo-400 font-semibold'
               : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/40 border border-transparent'
@@ -111,6 +116,7 @@ export default function AdminLayout({ auth, children }: { auth: AuthContextType;
           </button>
           <button
             onClick={() => navigate('/admin/logs')}
+            onMouseEnter={() => import('../../views/CombinedLogsView')}
             className={`w-full py-2.5 px-3 rounded-xl text-left text-xs font-medium flex items-center gap-2.5 transition-colors ${location.pathname === '/admin/logs'
               ? 'bg-indigo-600/10 border border-indigo-500/20 text-indigo-400 font-semibold'
               : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/40 border border-transparent'

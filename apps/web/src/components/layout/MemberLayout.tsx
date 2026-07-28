@@ -60,6 +60,7 @@ export default function MemberLayout({ auth, children }: { auth: AuthContextType
           <div className="px-3 py-1.5 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Danh mục</div>
           <button
             onClick={() => navigate('/')}
+            onMouseEnter={() => import('../../views/MemberHomeView')}
             className={`w-full py-2.5 px-3 rounded-xl text-left text-xs font-medium flex items-center gap-2.5 transition-colors ${location.pathname === '/'
               ? 'bg-indigo-600/10 border border-indigo-500/20 text-indigo-400 font-semibold'
               : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/40 border border-transparent'
@@ -70,6 +71,7 @@ export default function MemberLayout({ auth, children }: { auth: AuthContextType
           </button>
           <button
             onClick={() => navigate('/check-in')}
+            onMouseEnter={() => import('../../app/CheckInView')}
             className={`w-full py-2.5 px-3 rounded-xl text-left text-xs font-medium flex items-center gap-2.5 transition-colors ${location.pathname === '/check-in'
               ? 'bg-indigo-600/10 border border-indigo-500/20 text-indigo-400 font-semibold'
               : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/40 border border-transparent'
@@ -80,6 +82,7 @@ export default function MemberLayout({ auth, children }: { auth: AuthContextType
           </button>
           <button
             onClick={() => navigate('/projects')}
+            onMouseEnter={() => import('../../components/projects/ProjectsView')}
             className={`w-full py-2.5 px-3 rounded-xl text-left text-xs font-medium flex items-center gap-2.5 transition-colors ${location.pathname.startsWith('/projects')
               ? 'bg-indigo-600/10 border border-indigo-500/20 text-indigo-400 font-semibold'
               : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/40 border border-transparent'
@@ -91,6 +94,7 @@ export default function MemberLayout({ auth, children }: { auth: AuthContextType
 
           <button
             onClick={() => navigate('/calendar')}
+            onMouseEnter={() => import('../../app/CalendarView')}
             className={`w-full py-2.5 px-3 rounded-xl text-left text-xs font-medium flex items-center gap-2.5 transition-colors ${location.pathname.startsWith('/calendar')
               ? 'bg-indigo-600/10 border border-indigo-500/20 text-indigo-400 font-semibold'
               : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/40 border border-transparent'
@@ -101,6 +105,7 @@ export default function MemberLayout({ auth, children }: { auth: AuthContextType
           </button>
           <button
             onClick={() => navigate('/personnel')}
+            onMouseEnter={() => import('../../components/personnel/MemberPersonnelView')}
             className={`w-full py-2.5 px-3 rounded-xl text-left text-xs font-medium flex items-center gap-2.5 transition-colors ${location.pathname.startsWith('/personnel')
               ? 'bg-indigo-600/10 border border-indigo-500/20 text-indigo-400 font-semibold'
               : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/40 border border-transparent'

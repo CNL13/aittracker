@@ -340,9 +340,13 @@ export default function TaskBoardView({
 
   const handleUpdateStatus = async (task: any, newStatus: string) => {
     setActivePopover(null);
-    try {
-      const canManageThisTask = isAdmin || task.memberRole === 'manager';
-      if (newStatus === 'done' && !canManageThisTask) {
+    const canManageThisTask = isAdmin || task.memberRole === 'manager';
+    const oldStatus = task.status;
+    const oldPercent = task.percentComplete;
+    const targetPercent = newStatus === 'done' ? 100 : oldPercent;
+
+    if (newStatus === 'done' && !canManageThisTask) {
+      try {
         const res = await fetch('/api/progress/submit', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -359,29 +363,41 @@ export default function TaskBoardView({
           const d = await res.json();
           alert(d.error || 'Không thể gửi yêu cầu hoàn thành.');
         }
-        return;
+      } catch (err) {
+        console.error(err);
       }
+      return;
+    }
 
+    // --- OPTIMISTIC UI: Update state immediately (0ms delay) ---
+    setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: newStatus, percentComplete: targetPercent } : t));
+
+    try {
       const res = await fetch(`/api/tasks/update?taskId=${task.id}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           status: newStatus,
-          percentComplete: newStatus === 'done' ? 100 : task.percentComplete,
+          percentComplete: targetPercent,
           version: task.version,
         }),
       });
       if (res.ok) {
-        fetchTasks();
         if (onUpdateSuccess) onUpdateSuccess();
       } else {
+        // Rollback on failure
+        setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: oldStatus, percentComplete: oldPercent } : t));
         const d = await res.json();
         alert(d.error || 'Không thể đổi trạng thái.');
       }
     } catch (err) {
+      // Rollback on network error
+      setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: oldStatus, percentComplete: oldPercent } : t));
       console.error(err);
     }
   };
+
+
 
   const handleArchiveTask = async (task: any) => {
     setActivePopover(null);
