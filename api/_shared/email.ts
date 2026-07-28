@@ -47,7 +47,7 @@ export async function sendLateCheckInEmailNotification(user: any, checkin: any) 
       </table>
 
       <div style="text-align: center; margin-top: 24px; pt: 16px; border-top: 1px solid #1e293b;">
-        <a href="http://localhost:3000/#/admin-reports" style="display: inline-block; background-color: #4f46e5; color: #ffffff; padding: 10px 24px; text-decoration: none; border-radius: 10px; font-size: 13px; font-weight: 700;">
+        <a href="https://aittracker-web.vercel.app/#/admin-reports" style="display: inline-block; background-color: #4f46e5; color: #ffffff; padding: 10px 24px; text-decoration: none; border-radius: 10px; font-size: 13px; font-weight: 700;">
           🔍 Xem chi tiết trên AIT Tracker
         </a>
       </div>
@@ -79,7 +79,7 @@ export async function sendAiExecutiveDigestEmail(summaryHtml: string) {
       ${summaryHtml}
 
       <div style="text-align: center; margin-top: 24px;">
-        <a href="http://localhost:3000/#/admin-reports" style="display: inline-block; background-color: #4f46e5; color: #ffffff; padding: 10px 24px; text-decoration: none; border-radius: 10px; font-size: 13px; font-weight: 700;">
+        <a href="https://aittracker-web.vercel.app/#/admin-reports" style="display: inline-block; background-color: #4f46e5; color: #ffffff; padding: 10px 24px; text-decoration: none; border-radius: 10px; font-size: 13px; font-weight: 700;">
           📊 Mở Dashboard Quản lý Báo cáo
         </a>
       </div>

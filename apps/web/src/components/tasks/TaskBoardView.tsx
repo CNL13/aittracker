@@ -14,6 +14,7 @@ import {
 import TaskCommentModal from './TaskCommentModal';
 import KanbanBoard from './KanbanBoard';
 import UpdateTaskProgressModal from './UpdateTaskProgressModal';
+import { cachedFetch } from '../../utils/apiCache';
 
 export default function TaskBoardView({
   auth,
@@ -140,11 +141,8 @@ export default function TaskBoardView({
 
   const fetchProjects = useCallback(async () => {
     try {
-      const res = await fetch('/api/projects/list', { credentials: 'include' });
-      if (res.ok) {
-        const data = await res.json();
-        setProjects(data.projects || []);
-      }
+      const data = await cachedFetch('/api/projects/list', 5 * 60 * 1000);
+      setProjects(data.projects || []);
     } catch (e) {
       console.error(e);
     }

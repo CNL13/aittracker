@@ -7,7 +7,7 @@ import {
   Route,
   Navigate
 } from 'react-router-dom';
-import { Loader2 } from 'lucide-react';
+import { AppSkeleton, PageSkeleton } from '../components/ui/Skeletons';
 
 // Types
 import { User, AuthContextType } from '../types';
@@ -88,12 +88,7 @@ export default function App() {
   };
 
   if (authState.loading) {
-    return (
-      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-slate-200">
-        <Loader2 className="h-8 w-8 text-indigo-500 animate-spin mb-4" />
-        <p className="text-sm font-medium text-slate-400">Đang tải cấu hình ứng dụng...</p>
-      </div>
-    );
+    return <AppSkeleton />;
   }
 
   const authContextValue: AuthContextType = {
@@ -106,12 +101,7 @@ export default function App() {
 
   return (
     <HashRouter>
-      <Suspense fallback={
-        <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-slate-200">
-          <Loader2 className="h-8 w-8 text-indigo-500 animate-spin mb-4" />
-          <p className="text-sm font-medium text-slate-400">Đang tải...</p>
-        </div>
-      }>
+      <Suspense fallback={<PageSkeleton />}>
         <Routes>
         <Route
           path="/login"

@@ -14,6 +14,7 @@ import {
 } from '../../types';
 import CreateProjectModal from './CreateProjectModal';
 import EditProjectModal from './EditProjectModal';
+import { cachedFetch } from '../../utils/apiCache';
 
 export default function ProjectsView({ auth }: { auth: AuthContextType }) {
 
@@ -49,11 +50,8 @@ export default function ProjectsView({ auth }: { auth: AuthContextType }) {
 
   const fetchUsers = useCallback(async () => {
     try {
-      const res = await fetch('/api/users/list?limit=100&status=active');
-      if (res.ok) {
-        const data = await res.json();
-        setUsers(data.users || []);
-      }
+      const data = await cachedFetch('/api/users/list?limit=100&status=active', 5 * 60 * 1000);
+      setUsers(data.users || []);
     } catch (e) {
       console.error(e);
     }
