@@ -176,8 +176,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
   } catch (error: unknown) {
     console.error('Login error:', error);
+    const errMsg = error instanceof Error ? error.message : String(error);
+    const errCode = (error as any)?.code || 'unknown';
     return res.status(500).json({
       error: 'Đã xảy ra lỗi hệ thống. Vui lòng thử lại sau.',
+      debug_message: errMsg,
+      debug_code: errCode,
     });
   }
 }
