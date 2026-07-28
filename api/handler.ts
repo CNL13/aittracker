@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { sql } from './_shared/db.js';
 
 // ─── Auth ───
 import authLogin from './auth/login.js';
@@ -179,6 +180,25 @@ const routes: Record<string, (req: VercelRequest, res: VercelResponse) => Promis
   'progress/review': progressReview,
 };
 
+// Temporary debug handler
+async function debugHandler(req: VercelRequest, res: VercelResponse) {
+  const info: any = {
+    DATABASE_URL: process.env.DATABASE_URL ? `${process.env.DATABASE_URL.substring(0, 30)}...` : 'NOT SET',
+    SUPABASE_URL: process.env.SUPABASE_URL ? 'SET' : 'NOT SET',
+    NODE_ENV: process.env.NODE_ENV || 'not set',
+  };
+  try {
+    const result = await sql`SELECT current_database() as db, current_user as usr, count(*) as user_count FROM users`;
+    info.db_connected = true;
+    info.db_result = result[0];
+  } catch (err: any) {
+    info.db_connected = false;
+    info.db_error = err.message;
+    info.db_error_code = err.code;
+  }
+  return res.status(200).json(info);
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Extract the route path from the URL (remove /api/ prefix)
   const url = req.url || '';
@@ -192,6 +212,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   // Look up the handler in the route map
   const routeHandler = routes[routeKey];
+
+  // Temporary debug route
+  if (routeKey === 'debug') {
+    return debugHandler(req, res);
+  }
 
   if (!routeHandler) {
     return res.status(404).json({ error: `API route not found: /api/${routeKey}` });
