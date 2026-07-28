@@ -1,6 +1,6 @@
 /* eslint-disable */
 // @ts-nocheck
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   User as UserIcon, Users, Lock, Unlock, KeyRound, LogOut, Plus, Edit2, RefreshCw, Search, Filter, Check,
   AlertTriangle, Copy, History, Laptop, Smartphone, ChevronLeft, ChevronRight, Shield, Loader2, CheckCircle2,
@@ -13,6 +13,8 @@ import {
 } from '../../types';
 import SessionManagerModal from './SessionManagerModal';
 import { PasswordChangeForm } from '../../views/ChangePasswordView';
+import { cachedFetch, readCachedData, refreshCachedData, subscribeCache } from '../../utils/apiCache';
+import { useAppRefresh } from '../../hooks/useAppRefresh';
 
 export default function AdminUsersView({ auth }: { auth: AuthContextType }) {
   const [usersList, setUsersList] = useState<User[]>([]);
@@ -21,10 +23,27 @@ export default function AdminUsersView({ auth }: { auth: AuthContextType }) {
 
   // Filters State
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [role, setRole] = useState('');
   const [status, setStatus] = useState('');
   const [page, setPage] = useState(1);
   const limit = 20;
+
+  useEffect(() => {
+    const handler = setTimeout(() => setDebouncedSearch(search), 250);
+    return () => clearTimeout(handler);
+  }, [search]);
+
+  const usersUrl = useMemo(() => {
+    const params = new URLSearchParams({
+      search: debouncedSearch,
+      role,
+      status,
+      page: page.toString(),
+      limit: limit.toString(),
+    });
+    return `/api/users/list?${params}`;
+  }, [debouncedSearch, role, status, page]);
 
   // Modals state
   const [createModal, setCreateModal] = useState(false);
@@ -37,31 +56,34 @@ export default function AdminUsersView({ auth }: { auth: AuthContextType }) {
   const [tempPassword, setTempPassword] = useState<string | null>(null);
 
   // Fetch Users function
-  const fetchUsers = useCallback(async () => {
-    setLoading(true);
+  const fetchUsers = useCallback(async (force = false) => {
+    const cached = readCachedData(usersUrl);
+    setLoading(!cached);
     try {
-      const params = new URLSearchParams({
-        search,
-        role,
-        status,
-        page: page.toString(),
-        limit: limit.toString(),
-      });
-      const res = await fetch(`/api/users/list?${params}`);
-      if (res.ok) {
-        const data = await res.json();
-        setUsersList(data.users || []);
-        setTotalUsers(data.total || 0);
-      }
+      const data = force
+        ? await refreshCachedData(usersUrl)
+        : await cachedFetch(usersUrl, 30 * 1000);
+      setUsersList(data.users || []);
+      setTotalUsers(data.total || 0);
     } catch (e) {
       console.error(e);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
-  }, [search, role, status, page]);
+  }, [usersUrl]);
 
   useEffect(() => {
     fetchUsers();
   }, [fetchUsers]);
+
+  useEffect(() => {
+    return subscribeCache(usersUrl, (data) => {
+      setUsersList(data.users || []);
+      setTotalUsers(data.total || 0);
+    });
+  }, [usersUrl]);
+
+  useAppRefresh(() => fetchUsers(true), { minIntervalMs: 6000 });
 
   // Handle Create User
   const [createForm, setCreateForm] = useState({
@@ -97,7 +119,7 @@ export default function AdminUsersView({ auth }: { auth: AuthContextType }) {
       const data = await res.json();
       if (res.ok) {
         setTempPassword(data.temporaryPassword || data.tempPassword);
-        fetchUsers();
+        fetchUsers(true);
         // Clear create form
         setCreateForm({ username: '', fullName: '', email: '', department: '', position: '', role: 'member' });
       } else {
@@ -153,7 +175,7 @@ export default function AdminUsersView({ auth }: { auth: AuthContextType }) {
         const data = await res.json();
         if (res.ok) {
           setEditUser(null);
-          fetchUsers();
+          fetchUsers(true);
         } else {
           setEditError(data.error || 'Cập nhật thất bại.');
         }
@@ -173,7 +195,7 @@ export default function AdminUsersView({ auth }: { auth: AuthContextType }) {
         const data = await res.json();
         if (res.ok) {
           setEditUser(null);
-          fetchUsers();
+          fetchUsers(true);
         } else {
           setEditError(data.error || 'Cập nhật thất bại.');
         }
@@ -196,7 +218,7 @@ export default function AdminUsersView({ auth }: { auth: AuthContextType }) {
       });
       const data = await res.json();
       if (res.ok) {
-        fetchUsers();
+        fetchUsers(true);
       } else {
         alert(data.error || 'Thao tác trạng thái thất bại.');
       }
@@ -218,7 +240,7 @@ export default function AdminUsersView({ auth }: { auth: AuthContextType }) {
       if (res.ok) {
         setResetUser(user);
         setTempPassword(data.temporaryPassword || data.tempPassword);
-        fetchUsers();
+        fetchUsers(true);
       } else {
         alert(data.error || 'Reset mật khẩu thất bại.');
       }

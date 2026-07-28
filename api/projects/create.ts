@@ -115,7 +115,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           WHERE role = 'admin' AND status = 'active'
         `;
         const appUrl = process.env.APP_URL || 'http://localhost:5173';
-        for (const admin of admins) {
+        await Promise.allSettled(admins.map((admin: any) => {
           const subject = `[AIT Work Tracker] Yêu cầu phê duyệt dự án mới`;
           const html = `
             <p>Chào Admin ${admin.full_name},</p>
@@ -126,15 +126,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             </ul>
             <p>Vui lòng đăng nhập hệ thống và duyệt tại <a href="${appUrl}/admin/projects">Quản lý dự án</a>.</p>
           `;
-          sendEmail({
+          return sendEmail({
             recipientUserId: admin.id,
             to: admin.email || '',
             subject,
             html,
             type: 'project_approval_request',
             dedupeKey: `project-approval-${createdProjectId}-${admin.id}`,
+            trustRecipientUserId: true,
           }).catch(err => console.error(`Failed to send project approval notification to ${admin.username}:`, err));
-        }
+        }));
       } catch (err) {
         console.error('Failed to notify admins for project approval request:', err);
       }

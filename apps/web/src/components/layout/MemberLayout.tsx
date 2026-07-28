@@ -13,10 +13,17 @@ import {
   User, Task, TaskStatus, TaskPriority, TaskBlocker, TaskMember, AuthSession, AuthContextType, Project, ProjectMember
 } from '../../types';
 import NotificationBell from './NotificationBell';
+import { prefetchRouteData } from '../../utils/prefetchRoutes';
 
 export default function MemberLayout({ auth, children }: { auth: AuthContextType; children: React.ReactNode }) {
   const navigate = useNavigate();
   const location = useLocation();
+  const warmRoute = (path: string) => prefetchRouteData(path, auth.user?.role);
+  const go = (path: string) => {
+    warmRoute(path);
+    navigate(path);
+    setTimeout(() => window.dispatchEvent(new Event('ait:app-refresh')), 0);
+  };
 
   return (
     <div className="min-h-screen bg-[#030712] text-slate-200 flex flex-col">
@@ -59,8 +66,8 @@ export default function MemberLayout({ auth, children }: { auth: AuthContextType
         <aside className="w-full md:w-52 shrink-0 space-y-1">
           <div className="px-3 py-1.5 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Danh mục</div>
           <button
-            onClick={() => navigate('/')}
-            onMouseEnter={() => import('../../views/MemberHomeView')}
+            onClick={() => go('/')}
+            onMouseEnter={() => { import('../../views/MemberHomeView'); warmRoute('/'); }}
             className={`w-full py-2.5 px-3 rounded-xl text-left text-xs font-medium flex items-center gap-2.5 transition-colors ${location.pathname === '/'
               ? 'bg-indigo-600/10 border border-indigo-500/20 text-indigo-400 font-semibold'
               : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/40 border border-transparent'
@@ -70,7 +77,7 @@ export default function MemberLayout({ auth, children }: { auth: AuthContextType
             Trang chủ cá nhân
           </button>
           <button
-            onClick={() => navigate('/check-in')}
+            onClick={() => go('/check-in')}
             onMouseEnter={() => import('../../app/CheckInView')}
             className={`w-full py-2.5 px-3 rounded-xl text-left text-xs font-medium flex items-center gap-2.5 transition-colors ${location.pathname === '/check-in'
               ? 'bg-indigo-600/10 border border-indigo-500/20 text-indigo-400 font-semibold'
@@ -81,8 +88,8 @@ export default function MemberLayout({ auth, children }: { auth: AuthContextType
             Nộp báo cáo
           </button>
           <button
-            onClick={() => navigate('/projects')}
-            onMouseEnter={() => import('../../components/projects/ProjectsView')}
+            onClick={() => go('/projects')}
+            onMouseEnter={() => { import('../../components/projects/ProjectsView'); warmRoute('/projects'); }}
             className={`w-full py-2.5 px-3 rounded-xl text-left text-xs font-medium flex items-center gap-2.5 transition-colors ${location.pathname.startsWith('/projects')
               ? 'bg-indigo-600/10 border border-indigo-500/20 text-indigo-400 font-semibold'
               : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/40 border border-transparent'
@@ -93,8 +100,8 @@ export default function MemberLayout({ auth, children }: { auth: AuthContextType
           </button>
 
           <button
-            onClick={() => navigate('/calendar')}
-            onMouseEnter={() => import('../../app/CalendarView')}
+            onClick={() => go('/calendar')}
+            onMouseEnter={() => { import('../../app/CalendarView'); warmRoute('/calendar'); }}
             className={`w-full py-2.5 px-3 rounded-xl text-left text-xs font-medium flex items-center gap-2.5 transition-colors ${location.pathname.startsWith('/calendar')
               ? 'bg-indigo-600/10 border border-indigo-500/20 text-indigo-400 font-semibold'
               : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/40 border border-transparent'
@@ -104,8 +111,8 @@ export default function MemberLayout({ auth, children }: { auth: AuthContextType
             Lịch & công
           </button>
           <button
-            onClick={() => navigate('/personnel')}
-            onMouseEnter={() => import('../../components/personnel/MemberPersonnelView')}
+            onClick={() => go('/personnel')}
+            onMouseEnter={() => { import('../../components/personnel/MemberPersonnelView'); warmRoute('/personnel'); }}
             className={`w-full py-2.5 px-3 rounded-xl text-left text-xs font-medium flex items-center gap-2.5 transition-colors ${location.pathname.startsWith('/personnel')
               ? 'bg-indigo-600/10 border border-indigo-500/20 text-indigo-400 font-semibold'
               : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/40 border border-transparent'

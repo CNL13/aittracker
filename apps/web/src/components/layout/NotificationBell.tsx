@@ -12,6 +12,8 @@ import {
 import {
   User, Task, TaskStatus, TaskPriority, TaskBlocker, TaskMember, AuthSession, AuthContextType, Project, ProjectMember
 } from '../../types';
+import { cachedFetch, refreshCachedData } from '../../utils/apiCache';
+import { useAppRefresh } from '../../hooks/useAppRefresh';
 
 export default function NotificationBell() {
   const [open, setOpen] = useState(false);
@@ -19,22 +21,22 @@ export default function NotificationBell() {
   const [unreadCount, setUnreadCount] = useState(0);
   const navigate = useNavigate();
 
-  const fetchNotifications = useCallback(async () => {
+  const fetchNotifications = useCallback(async (force = false) => {
     try {
-      const res = await fetch('/api/notifications/in-app?limit=20');
-      if (res.ok) {
-        const d = await res.json();
-        setNotifications(d.notifications || []);
-        setUnreadCount(d.unreadCount || 0);
-      }
+      const d = force
+        ? await refreshCachedData('/api/notifications/in-app?limit=20')
+        : await cachedFetch('/api/notifications/in-app?limit=20', 15 * 1000);
+      setNotifications(d.notifications || []);
+      setUnreadCount(d.unreadCount || 0);
     } catch { /* ignore */ }
   }, []);
 
   useEffect(() => { fetchNotifications(); }, [fetchNotifications]);
   useEffect(() => {
-    const interval = setInterval(fetchNotifications, 30000);
+    const interval = setInterval(() => fetchNotifications(true), 30000);
     return () => clearInterval(interval);
   }, [fetchNotifications]);
+  useAppRefresh(() => fetchNotifications(true), { minIntervalMs: 5000 });
 
   const markRead = async (id?: string) => {
     try {
@@ -43,7 +45,7 @@ export default function NotificationBell() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(id ? { notificationId: id } : { markAllRead: true }),
       });
-      fetchNotifications();
+      fetchNotifications(true);
     } catch { /* ignore */ }
   };
 

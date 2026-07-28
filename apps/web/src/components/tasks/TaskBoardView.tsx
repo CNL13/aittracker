@@ -1,6 +1,6 @@
 /* eslint-disable */
 // @ts-nocheck
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   User as UserIcon, Users, Lock, Unlock, KeyRound, LogOut, Plus, Edit2, RefreshCw, Search, Filter, Check,
   AlertTriangle, Copy, History, Laptop, Smartphone, ChevronLeft, ChevronRight, Shield, Loader2, CheckCircle2,
@@ -14,7 +14,8 @@ import {
 import TaskCommentModal from './TaskCommentModal';
 import KanbanBoard from './KanbanBoard';
 import UpdateTaskProgressModal from './UpdateTaskProgressModal';
-import { cachedFetch } from '../../utils/apiCache';
+import { cachedFetch, readCachedData, refreshCachedData, subscribeCache } from '../../utils/apiCache';
+import { useAppRefresh } from '../../hooks/useAppRefresh';
 
 export default function TaskBoardView({
   auth,
@@ -45,6 +46,19 @@ export default function TaskBoardView({
   const [groupBy, setGroupBy] = useState<'status' | 'project'>('status');
   const activeProjectId = fixedProjectId || selectedProjectId;
   const canCreateSubtask = !!activeProjectId;
+  const tasksUrl = useMemo(() => {
+    const query = new URLSearchParams({
+      search: debouncedSearch.trim(),
+      limit: '200',
+    });
+    if (activeProjectId) {
+      query.set('projectId', activeProjectId);
+    }
+    if (onlyMine) {
+      query.set('onlyMine', 'true');
+    }
+    return `/api/tasks/my?${query.toString()}`;
+  }, [debouncedSearch, activeProjectId, onlyMine]);
 
   const [activePopover, setActivePopover] = useState<{
     taskId: string;
@@ -161,33 +175,25 @@ export default function TaskBoardView({
     }
   }, []);
 
-  const fetchTasks = useCallback(async () => {
-    setLoading(true);
+  const fetchTasks = useCallback(async (force = false) => {
+    const cached = readCachedData(tasksUrl);
+    setLoading(!cached);
     try {
-      const query = new URLSearchParams({
-        search: debouncedSearch.trim(),
-        limit: '200',
-      });
-      const pId = fixedProjectId || selectedProjectId;
-      if (pId) {
-        query.set('projectId', pId);
-        fetchProjectMembers(pId);
+      if (activeProjectId) {
+        fetchProjectMembers(activeProjectId);
+      } else {
+        setProjectMembers([]);
       }
-      if (onlyMine) {
-        query.set('onlyMine', 'true');
-      }
-      const endpoint = '/api/tasks/my';
-      const res = await fetch(`${endpoint}?${query.toString()}`, { credentials: 'include' });
-      if (res.ok) {
-        const data = await res.json();
-        setTasks(data.tasks || []);
-      }
+      const data = force
+        ? await refreshCachedData(tasksUrl)
+        : await cachedFetch(tasksUrl, 15 * 1000);
+      setTasks(data.tasks || []);
     } catch (e) {
       console.error(e);
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, selectedProjectId, fixedProjectId, onlyMine, fetchProjectMembers]);
+  }, [tasksUrl, activeProjectId, fetchProjectMembers]);
 
   useEffect(() => {
     fetchProjects();
@@ -196,6 +202,14 @@ export default function TaskBoardView({
   useEffect(() => {
     fetchTasks();
   }, [fetchTasks]);
+
+  useEffect(() => {
+    return subscribeCache(tasksUrl, (data) => {
+      setTasks(data.tasks || []);
+    });
+  }, [tasksUrl]);
+
+  useAppRefresh(() => fetchTasks(true), { minIntervalMs: 4000 });
 
   // Quick Action: Claim Task / Assign to self
   const handleClaimTask = async (task: any) => {
@@ -206,7 +220,7 @@ export default function TaskBoardView({
         body: JSON.stringify({ action: 'claim_task' }),
       });
       if (res.ok) {
-        fetchTasks();
+        fetchTasks(true);
         if (onUpdateSuccess) onUpdateSuccess();
       } else {
         const d = await res.json();
@@ -227,7 +241,7 @@ export default function TaskBoardView({
         body: JSON.stringify({ action: 'unclaim_task' }),
       });
       if (res.ok) {
-        fetchTasks();
+        fetchTasks(true);
         if (onUpdateSuccess) onUpdateSuccess();
       } else {
         const d = await res.json();
@@ -263,7 +277,7 @@ export default function TaskBoardView({
       });
       if (res.ok) {
         resetRootTaskDraft();
-        fetchTasks();
+        fetchTasks(true);
         if (onUpdateSuccess) onUpdateSuccess();
       } else {
         const d = await res.json();
@@ -304,7 +318,7 @@ export default function TaskBoardView({
       });
       if (res.ok) {
         resetSubtaskDraft();
-        fetchTasks();
+        fetchTasks(true);
         if (onUpdateSuccess) onUpdateSuccess();
       } else {
         const d = await res.json();
@@ -325,7 +339,7 @@ export default function TaskBoardView({
         body: JSON.stringify({ priority: newPriority, version: task.version }),
       });
       if (res.ok) {
-        fetchTasks();
+        fetchTasks(true);
         if (onUpdateSuccess) onUpdateSuccess();
       } else {
         const d = await res.json();
@@ -355,7 +369,7 @@ export default function TaskBoardView({
           }),
         });
         if (res.ok) {
-          fetchTasks();
+          fetchTasks(true);
           if (onUpdateSuccess) onUpdateSuccess();
         } else {
           const d = await res.json();
@@ -381,6 +395,7 @@ export default function TaskBoardView({
         }),
       });
       if (res.ok) {
+        fetchTasks(true);
         if (onUpdateSuccess) onUpdateSuccess();
       } else {
         // Rollback on failure
@@ -409,7 +424,7 @@ export default function TaskBoardView({
         headers: { 'Content-Type': 'application/json' },
       });
       if (res.ok) {
-        fetchTasks();
+        fetchTasks(true);
         if (onUpdateSuccess) onUpdateSuccess();
       } else {
         const d = await res.json();
@@ -442,7 +457,7 @@ export default function TaskBoardView({
           }),
         });
       }
-      fetchTasks();
+      fetchTasks(true);
       if (onUpdateSuccess) onUpdateSuccess();
     } catch (e) {
       console.error(e);
@@ -1128,7 +1143,7 @@ export default function TaskBoardView({
           onClose={() => setUpdateTaskModal(null)}
           onSuccess={() => {
             setUpdateTaskModal(null);
-            fetchTasks();
+            fetchTasks(true);
           }}
         />
       )}

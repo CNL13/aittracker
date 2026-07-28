@@ -16,6 +16,7 @@ import TaskBoardView from '../tasks/TaskBoardView';
 import EditProjectModal from './EditProjectModal';
 import CreateTaskModal from '../tasks/CreateTaskModal';
 import UpdateTaskProgressModal from '../tasks/UpdateTaskProgressModal';
+import { useAppRefresh } from '../../hooks/useAppRefresh';
 
 export default function ProjectDetailView({ auth }: { auth: AuthContextType }) {
   const { id } = useParams<{ id: string }>();
@@ -398,6 +399,15 @@ export default function ProjectDetailView({ auth }: { auth: AuthContextType }) {
       console.error(e);
     }
   }, [canManage, members]);
+
+  const refreshActiveProjectTab = useCallback(async () => {
+    await fetchProjectDetails();
+    if (activeTab === 'tasks') await fetchTasks();
+    if (activeTab === 'progress') await fetchProgressUpdates();
+    if (activeTab === 'chat') await fetchChatMessages();
+  }, [activeTab, fetchProjectDetails, fetchTasks, fetchProgressUpdates, fetchChatMessages]);
+
+  useAppRefresh(refreshActiveProjectTab, { minIntervalMs: 5000 });
 
   useEffect(() => {
     fetchProjectDetails();

@@ -14,6 +14,8 @@ interface CacheEntry {
 }
 
 const memoryCache = new Map<string, CacheEntry>();
+const inFlightRequests = new Map<string, Promise<any>>();
+const subscribers = new Map<string, Set<(data: any) => void>>();
 const DEFAULT_TTL = 5 * 60 * 1000; // 5 minutes
 const STORAGE_PREFIX = 'ait_cache_';
 
@@ -31,6 +33,47 @@ function writeStorage(url: string, entry: CacheEntry) {
   try {
     localStorage.setItem(STORAGE_PREFIX + btoa(url), JSON.stringify(entry));
   } catch {} // Silently fail if quota exceeded
+}
+
+function notifySubscribers(url: string, data: any) {
+  const listeners = subscribers.get(url);
+  if (listeners) {
+    listeners.forEach((listener) => {
+      try {
+        listener(data);
+      } catch {}
+    });
+  }
+
+  try {
+    window.dispatchEvent(new CustomEvent('ait:cache-updated', { detail: { url, data } }));
+  } catch {}
+}
+
+export function readCachedData(url: string): any | null {
+  const memEntry = memoryCache.get(url);
+  if (memEntry) return memEntry.data;
+
+  const storageEntry = readStorage(url);
+  if (storageEntry) {
+    memoryCache.set(url, storageEntry);
+    return storageEntry.data;
+  }
+
+  return null;
+}
+
+export function subscribeCache(url: string, listener: (data: any) => void) {
+  const listeners = subscribers.get(url) || new Set();
+  listeners.add(listener);
+  subscribers.set(url, listeners);
+
+  return () => {
+    const current = subscribers.get(url);
+    if (!current) return;
+    current.delete(listener);
+    if (current.size === 0) subscribers.delete(url);
+  };
 }
 
 /**
@@ -55,7 +98,7 @@ export async function cachedFetch(
       return memEntry.data; // Fresh cache → instant return
     }
     // Stale → return stale data, revalidate in background
-    fetchAndCache(url, options);
+    fetchAndCache(url, options).catch(() => {});
     return memEntry.data;
   }
 
@@ -65,7 +108,7 @@ export async function cachedFetch(
     // Put in memory cache
     memoryCache.set(url, storageEntry);
     // Revalidate in background
-    fetchAndCache(url, options);
+    fetchAndCache(url, options).catch(() => {});
     return storageEntry.data;
   }
 
@@ -74,15 +117,34 @@ export async function cachedFetch(
 }
 
 /** Internal: fetch from API and update both caches */
-async function fetchAndCache(url: string, options?: RequestInit): Promise<any> {
-  const res = await fetch(url, { credentials: 'include', ...options });
-  if (!res.ok) throw new Error(`API error: ${res.status}`);
+async function fetchAndCache(url: string, options?: RequestInit, forceNew = false): Promise<any> {
+  const existing = inFlightRequests.get(url);
+  if (existing && !forceNew) return existing;
 
-  const data = await res.json();
-  const entry: CacheEntry = { data, timestamp: Date.now() };
-  memoryCache.set(url, entry);
-  writeStorage(url, entry);
-  return data;
+  const promise = (async () => {
+    const res = await fetch(url, { credentials: 'include', ...options });
+    if (!res.ok) throw new Error(`API error: ${res.status}`);
+
+    const data = await res.json();
+    const entry: CacheEntry = { data, timestamp: Date.now() };
+    memoryCache.set(url, entry);
+    writeStorage(url, entry);
+    notifySubscribers(url, data);
+    return data;
+  })();
+
+  inFlightRequests.set(url, promise);
+  try {
+    return await promise;
+  } finally {
+    if (inFlightRequests.get(url) === promise) {
+      inFlightRequests.delete(url);
+    }
+  }
+}
+
+export function refreshCachedData(url: string, options?: RequestInit): Promise<any> {
+  return fetchAndCache(url, options, true);
 }
 
 /** Invalidate a specific cache entry */

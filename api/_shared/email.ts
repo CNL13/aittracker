@@ -104,6 +104,7 @@ export async function sendEmail({
   type,
   dedupeKey,
   originalNotificationId = null,
+  trustRecipientUserId = false,
 }: {
   recipientUserId: string;
   to: string | string[];
@@ -112,6 +113,7 @@ export async function sendEmail({
   type: string;
   dedupeKey: string;
   originalNotificationId?: string | null;
+  trustRecipientUserId?: boolean;
 }) {
   const hasEmail = Array.isArray(to) ? to.length > 0 : !!to;
   const initialStatus = hasEmail ? 'pending' : 'skipped';
@@ -119,7 +121,9 @@ export async function sendEmail({
   const isUuid = typeof recipientUserId === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(recipientUserId);
   
   let validUserId: string | null = null;
-  if (isUuid) {
+  if (trustRecipientUserId && isUuid) {
+    validUserId = recipientUserId;
+  } else if (isUuid) {
     const check = await sql`SELECT id FROM users WHERE id = ${recipientUserId}::uuid LIMIT 1`;
     if (check[0]?.id) validUserId = check[0].id;
   }

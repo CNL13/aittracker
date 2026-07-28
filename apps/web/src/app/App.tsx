@@ -9,6 +9,7 @@ import {
 } from 'react-router-dom';
 import { AppSkeleton, PageSkeleton } from '../components/ui/Skeletons';
 import { prefetchData } from '../utils/apiCache';
+import { prefetchRouteData } from '../utils/prefetchRoutes';
 
 // Types
 import { User, AuthContextType } from '../types';
@@ -83,6 +84,10 @@ export default function App() {
         // Prefetch common data in background after login
         prefetchData('/api/projects/list');
         prefetchData('/api/users/list?limit=100&status=active');
+        prefetchRouteData('/tasks', data.user?.role);
+        prefetchRouteData('/projects', data.user?.role);
+        prefetchRouteData('/calendar', data.user?.role);
+        if (data.user?.role === 'admin') prefetchRouteData('/admin/users', data.user?.role);
         return { success: true };
       } else {
         return { success: false, error: data.error || 'Đã xảy ra lỗi khi đăng nhập.' };

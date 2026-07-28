@@ -1,6 +1,6 @@
 /* eslint-disable */
 // @ts-nocheck
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   User as UserIcon, Users, Lock, Unlock, KeyRound, LogOut, Plus, Edit2, RefreshCw, Search, Filter, Check,
@@ -14,7 +14,8 @@ import {
 } from '../../types';
 import CreateProjectModal from './CreateProjectModal';
 import EditProjectModal from './EditProjectModal';
-import { cachedFetch } from '../../utils/apiCache';
+import { cachedFetch, readCachedData, refreshCachedData, subscribeCache } from '../../utils/apiCache';
+import { useAppRefresh } from '../../hooks/useAppRefresh';
 
 export default function ProjectsView({ auth }: { auth: AuthContextType }) {
 
@@ -33,6 +34,15 @@ export default function ProjectsView({ auth }: { auth: AuthContextType }) {
   const [status, setStatus] = useState('');
   const [page, setPage] = useState(1);
   const limit = 6;
+  const projectsUrl = useMemo(() => {
+    const query = new URLSearchParams({
+      search: debouncedSearch.trim(),
+      status,
+      page: String(page),
+      limit: String(limit),
+    });
+    return `/api/projects/list?${query.toString()}`;
+  }, [debouncedSearch, status, page]);
 
   const [createModal, setCreateModal] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
@@ -69,7 +79,7 @@ export default function ProjectsView({ auth }: { auth: AuthContextType }) {
         body: JSON.stringify({ projectId: project.id }),
       });
       const data = await res.json();
-      if (res.ok) { await fetchProjects(); }
+      if (res.ok) { await fetchProjects(true); }
       else { setProjectActionError(data.error || 'Không thể duyệt dự án.'); }
     } catch { setProjectActionError('Không thể kết nối đến máy chủ.'); }
     finally { setApprovingProjectId(''); }
@@ -86,7 +96,7 @@ export default function ProjectsView({ auth }: { auth: AuthContextType }) {
         body: JSON.stringify({ projectId: rejectModal.id, reason: rejectReason.trim() }),
       });
       const data = await res.json();
-      if (res.ok) { await fetchProjects(); setRejectModal(null); setRejectReason(''); }
+      if (res.ok) { await fetchProjects(true); setRejectModal(null); setRejectReason(''); }
       else { setProjectActionError(data.error || 'Không thể từ chối dự án.'); }
     } catch { setProjectActionError('Không thể kết nối đến máy chủ.'); }
     finally { setRejectingProjectId(''); }
@@ -103,36 +113,40 @@ export default function ProjectsView({ auth }: { auth: AuthContextType }) {
         body: JSON.stringify({ projectId: deleteModal.id }),
       });
       const data = await res.json();
-      if (res.ok) { await fetchProjects(); setDeleteModal(null); }
+      if (res.ok) { await fetchProjects(true); setDeleteModal(null); }
       else { setProjectActionError(data.error || 'Không thể xóa dự án.'); }
     } catch { setProjectActionError('Không thể kết nối đến máy chủ.'); }
     finally { setDeletingProjectId(''); }
   };
 
-  const fetchProjects = useCallback(async () => {
-    setLoading(true);
+  const fetchProjects = useCallback(async (force = false) => {
+    const cached = readCachedData(projectsUrl);
+    setLoading(!cached);
     try {
-      const query = new URLSearchParams({
-        search: debouncedSearch.trim(),
-        status,
-        page: String(page),
-        limit: String(limit),
-      });
-      const res = await fetch(`/api/projects/list?${query.toString()}`);
-      if (res.ok) {
-        const data = await res.json();
-        setProjects(data.projects || []);
-        setTotal(data.total || 0);
-      }
+      const data = force
+        ? await refreshCachedData(projectsUrl)
+        : await cachedFetch(projectsUrl, 20 * 1000);
+      setProjects(data.projects || []);
+      setTotal(data.total || 0);
     } catch (e) {
       console.error(e);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
-  }, [debouncedSearch, status, page]);
+  }, [projectsUrl]);
 
   useEffect(() => {
     fetchProjects();
   }, [fetchProjects]);
+
+  useEffect(() => {
+    return subscribeCache(projectsUrl, (data) => {
+      setProjects(data.projects || []);
+      setTotal(data.total || 0);
+    });
+  }, [projectsUrl]);
+
+  useAppRefresh(() => fetchProjects(true), { minIntervalMs: 5000 });
 
   useEffect(() => {
     fetchUsers();
@@ -396,7 +410,7 @@ export default function ProjectsView({ auth }: { auth: AuthContextType }) {
           onClose={() => setCreateModal(false)}
           onSuccess={() => {
             setCreateModal(false);
-            fetchProjects();
+            fetchProjects(true);
           }}
         />
       )}
@@ -407,7 +421,7 @@ export default function ProjectsView({ auth }: { auth: AuthContextType }) {
           onClose={() => setEditingProject(null)}
           onSuccess={() => {
             setEditingProject(null);
-            fetchProjects();
+            fetchProjects(true);
           }}
         />
       )}

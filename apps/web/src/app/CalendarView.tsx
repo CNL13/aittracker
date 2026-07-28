@@ -15,6 +15,8 @@ import {
   Trash2,
   Users,
 } from 'lucide-react';
+import { cachedFetch, readCachedData, refreshCachedData, subscribeCache } from '../utils/apiCache';
+import { useAppRefresh } from '../hooks/useAppRefresh';
 
 type ShiftKey = 'morning' | 'afternoon' | 'full' | 'overtime' | 'online' | 'off' | 'custom';
 
@@ -222,6 +224,14 @@ export default function CalendarView({ auth }: { auth: any }) {
     const weekEnd = addDays(weekStart, 6);
     return formatDateKey(maxDate(monthEnd, weekEnd));
   }, [selectedDate, weekStart]);
+  const scheduleUrl = useMemo(() => {
+    const params = new URLSearchParams({
+      startDate: fetchStart,
+      endDate: fetchEnd,
+      limit: '1000',
+    });
+    return `/api/work-schedules/list?${params.toString()}`;
+  }, [fetchStart, fetchEnd]);
 
   const entryByUserDate = useMemo(() => {
     const map = new Map<string, WorkScheduleEntry>();
@@ -282,34 +292,39 @@ export default function CalendarView({ auth }: { auth: any }) {
 
   const selectedTargetEntry = targetUserId ? entryByUserDate.get(`${targetUserId}|${selectedDate}`) : null;
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
+  const fetchData = useCallback(async (force = false) => {
+    const cached = readCachedData(scheduleUrl);
+    setLoading(!cached);
     setError('');
     try {
-      const params = new URLSearchParams({
-        startDate: fetchStart,
-        endDate: fetchEnd,
-        limit: '1000',
-      });
-      const res = await fetch(`/api/work-schedules/list?${params.toString()}`);
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || 'Không thể tải lịch làm.');
-      }
-      setPeople(data.users || []);
-      setEntries(data.entries || []);
-      setNonWorkingDays(data.nonWorkingDays || []);
+      const freshOrCachedData = force
+        ? await refreshCachedData(scheduleUrl)
+        : await cachedFetch(scheduleUrl, 20 * 1000);
+      setPeople(freshOrCachedData.users || []);
+      setEntries(freshOrCachedData.entries || []);
+      setNonWorkingDays(freshOrCachedData.nonWorkingDays || []);
       if (!targetUserId && user?.id) setTargetUserId(user.id);
     } catch (err: any) {
       setError(err.message || 'Không thể tải lịch làm.');
     } finally {
       setLoading(false);
     }
-  }, [fetchStart, fetchEnd, targetUserId, user?.id]);
+  }, [scheduleUrl, targetUserId, user?.id]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  useEffect(() => {
+    return subscribeCache(scheduleUrl, (data) => {
+      setPeople(data.users || []);
+      setEntries(data.entries || []);
+      setNonWorkingDays(data.nonWorkingDays || []);
+      if (!targetUserId && user?.id) setTargetUserId(user.id);
+    });
+  }, [scheduleUrl, targetUserId, user?.id]);
+
+  useAppRefresh(() => fetchData(true), { minIntervalMs: 5000 });
 
   useEffect(() => {
     if (peoplePage > peopleTotalPages) setPeoplePage(peopleTotalPages);
@@ -400,7 +415,7 @@ export default function CalendarView({ auth }: { auth: any }) {
         `Đã đăng ký ${SHIFT_OPTIONS[selectedShift].label} cho ${selectedRegistrationDates.length} ngày.` +
           (registrationHolidayCount ? ` Có ${registrationHolidayCount} ngày nghỉ lễ vẫn được ghi nhận riêng.` : ''),
       );
-      await fetchData();
+      await fetchData(true);
     } catch (err: any) {
       setError(err.message || 'Không thể lưu lịch.');
     } finally {
@@ -421,7 +436,7 @@ export default function CalendarView({ auth }: { auth: any }) {
         throw new Error(data.error || 'Không thể xóa lịch.');
       }
       setSuccess('Đã xóa lịch của ngày đã chọn.');
-      await fetchData();
+      await fetchData(true);
     } catch (err: any) {
       setError(err.message || 'Không thể xóa lịch.');
     } finally {
