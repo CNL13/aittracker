@@ -191,6 +191,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const routeKey = match[1] as string;
 
+  // Health check - ultra lightweight, no DB, keeps serverless warm
+  if (routeKey === 'health') {
+    return res.status(200).json({ status: 'ok', ts: Date.now() });
+  }
+
   // Look up the handler in the route map
   const routeHandler = routes[routeKey];
 

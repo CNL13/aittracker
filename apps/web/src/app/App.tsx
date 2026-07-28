@@ -8,6 +8,7 @@ import {
   Navigate
 } from 'react-router-dom';
 import { AppSkeleton, PageSkeleton } from '../components/ui/Skeletons';
+import { prefetchData } from '../utils/apiCache';
 
 // Types
 import { User, AuthContextType } from '../types';
@@ -40,11 +41,21 @@ export default function App() {
     loading: true,
   });
 
-  const refreshProfile = useCallback(async () => {
+  const refreshProfile = useCallback(async (useEarlyFetch = false) => {
     try {
-      const res = await fetch('/api/users/me', { credentials: 'include' });
-      if (res.ok) {
-        const data = await res.json();
+      let data: any = null;
+      // Use early fetch from index.html if available (first load only)
+      if (useEarlyFetch && (window as any).__PREFETCH_AUTH) {
+        data = await (window as any).__PREFETCH_AUTH;
+        (window as any).__PREFETCH_AUTH = null; // Use only once
+      }
+      if (!data) {
+        const res = await fetch('/api/users/me', { credentials: 'include' });
+        if (res.ok) {
+          data = await res.json();
+        }
+      }
+      if (data?.user) {
         setAuthState({ user: data.user, loading: false });
       } else {
         setAuthState({ user: null, loading: false });
@@ -55,7 +66,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    refreshProfile();
+    refreshProfile(true); // Use early fetch on first load
   }, [refreshProfile]);
 
   const login = async (username: string, password: string) => {
@@ -69,6 +80,9 @@ export default function App() {
       const data = await res.json();
       if (res.ok) {
         await refreshProfile();
+        // Prefetch common data in background after login
+        prefetchData('/api/projects/list');
+        prefetchData('/api/users/list?limit=100&status=active');
         return { success: true };
       } else {
         return { success: false, error: data.error || 'Đã xảy ra lỗi khi đăng nhập.' };
