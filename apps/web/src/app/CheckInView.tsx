@@ -1,6 +1,8 @@
 /* eslint-disable */
 // @ts-nocheck
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { cachedFetch, refreshCachedData, subscribeCache } from '../utils/apiCache';
+import { useAppRefresh } from '../hooks/useAppRefresh';
 import { 
   CheckCircle2, AlertTriangle, Save, X, Search, 
   Calendar as CalendarIcon, Edit, ChevronLeft, ChevronRight, 
@@ -88,63 +90,67 @@ export default function CheckInView({ auth }: { auth: any }) {
     return days;
   }, [weekOffset]);
 
-  // Fetch Member Context (Form data)
-  const fetchContext = async () => {
+  // Fetch Member Context — SWR cache 60s, hiện data cũ ngay lập tức
+  const contextUrl = '/api/checkins/context';
+  const fetchContext = useCallback(async (force = false) => {
     try {
-      setLoadingContext(true);
-      const res = await fetch('/api/checkins/context');
-      if (res.ok) {
-        const data = await res.json();
-        setContext(data);
-        if (data.existingCheckIn) {
-          prefillForm(data.existingCheckIn);
-          setIsFormCollapsed(true); // Auto-collapse if already submitted today
-        } else {
-          loadDraft();
-          setIsFormCollapsed(false);
-        }
+      if (!force) setLoadingContext(false); // có cache thì không hiện spinner
+      const data = force
+        ? await refreshCachedData(contextUrl)
+        : await cachedFetch(contextUrl, 60 * 1000);
+      setContext(data);
+      if (data.existingCheckIn) {
+        prefillForm(data.existingCheckIn);
+        setIsFormCollapsed(true);
+      } else {
+        loadDraft();
+        setIsFormCollapsed(false);
       }
     } catch (e) {
       console.error(e);
     } finally {
       setLoadingContext(false);
     }
-  };
+  }, []);
 
-  // Fetch Calendar Matrix Data & Users List
-  const fetchMatrixData = async () => {
+  // Fetch Calendar Matrix — SWR cache 2 phút
+  const fetchMatrixData = useCallback(async (force = false) => {
+    const startDate = weekDays[0].dateStr;
+    const endDate = weekDays[6].dateStr;
+    const histUrl = `/api/checkins/history?startDate=${startDate}&endDate=${endDate}&limit=500`;
+    const usersUrl = '/api/users/list?limit=100&status=active';
     setMatrixLoading(true);
     try {
-      const startDate = weekDays[0].dateStr;
-      const endDate = weekDays[6].dateStr;
-      
-      const [histRes, userRes] = await Promise.all([
-        fetch(`/api/checkins/history?startDate=${startDate}&endDate=${endDate}&limit=500`),
-        fetch('/api/users/list?limit=100&status=active')
+      const [histData, userData] = await Promise.all([
+        force ? refreshCachedData(histUrl) : cachedFetch(histUrl, 2 * 60 * 1000),
+        cachedFetch(usersUrl, 5 * 60 * 1000),
       ]);
-
-      if (histRes.ok) {
-        const hData = await histRes.json();
-        setMatrixData(Array.isArray(hData) ? hData : hData.data || []);
-      }
-      if (userRes.ok) {
-        const uData = await userRes.json();
-        setUsersList(uData.users || []);
-      }
+      setMatrixData(Array.isArray(histData) ? histData : histData?.data || []);
+      setUsersList(userData?.users || []);
     } catch (e) {
       console.error('Fetch matrix error:', e);
     } finally {
       setMatrixLoading(false);
     }
-  };
+  }, [weekDays]);
 
+  // Load song song context + matrix ngay khi vào trang
   useEffect(() => {
-    fetchContext();
+    Promise.all([fetchContext(), fetchMatrixData()]);
   }, []);
 
+  // Re-fetch matrix khi đổi tuần
   useEffect(() => {
     fetchMatrixData();
   }, [weekDays]);
+
+  // Subscribe cache — cập nhật UI khi có background refresh
+  useEffect(() => {
+    return subscribeCache(contextUrl, (data) => setContext(data));
+  }, []);
+
+  // Auto-refresh khi quay lại trang / đổi tab trình duyệt
+  useAppRefresh(() => Promise.all([fetchContext(true), fetchMatrixData(true)]), { minIntervalMs: 10000 });
 
   const prefillForm = (data: any) => {
     setNoActivity(data.noActivity || false);

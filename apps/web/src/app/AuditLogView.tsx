@@ -2,6 +2,8 @@
 // @ts-nocheck
 import { useState, useEffect, useCallback } from 'react';
 import { Shield, Search, RefreshCw, ChevronLeft, ChevronRight, Loader2, Eye, EyeOff } from 'lucide-react';
+import { cachedFetch, refreshCachedData } from '../utils/apiCache';
+import { useAppRefresh } from '../hooks/useAppRefresh';
 
 interface AuditLog {
   id: string;
@@ -29,32 +31,28 @@ export default function AuditLogView() {
 
   const [expandedLogId, setExpandedLogId] = useState<string | null>(null);
 
-  const fetchLogs = useCallback(async () => {
-    setLoading(true);
+  const auditUrl = `/api/admin/audit?${new URLSearchParams({ page: String(page), limit: String(limit), action: actionFilter, entityType: entityFilter, search: search.trim() }).toString()}`;
+
+  const fetchLogs = useCallback(async (force = false) => {
     try {
-      const query = new URLSearchParams({
-        page: String(page),
-        limit: String(limit),
-        action: actionFilter,
-        entityType: entityFilter,
-        search: search.trim(),
-      });
-      const res = await fetch(`/api/admin/audit?${query.toString()}`);
-      if (res.ok) {
-        const data = await res.json();
-        setLogs(data.data || []);
-        setTotal(data.total || 0);
-      }
+      const data = force
+        ? await refreshCachedData(auditUrl)
+        : await cachedFetch(auditUrl, 15 * 1000);
+      setLogs(data.data || []);
+      setTotal(data.total || 0);
     } catch (error) {
       console.error('Failed to fetch audit logs:', error);
     } finally {
       setLoading(false);
     }
-  }, [page, actionFilter, entityFilter, search]);
+  }, [auditUrl]);
 
   useEffect(() => {
+    setLoading(true);
     fetchLogs();
   }, [fetchLogs]);
+
+  useAppRefresh(() => fetchLogs(true), { minIntervalMs: 15000 });
 
   const getActionLabel = (action: string) => {
     switch (action) {

@@ -78,7 +78,7 @@ export default function MemberLayout({ auth, children }: { auth: AuthContextType
           </button>
           <button
             onClick={() => go('/check-in')}
-            onMouseEnter={() => import('../../app/CheckInView')}
+            onMouseEnter={() => { import('../../app/CheckInView'); warmRoute('/check-in'); }}
             className={`w-full py-2.5 px-3 rounded-xl text-left text-xs font-medium flex items-center gap-2.5 transition-colors ${location.pathname === '/check-in'
               ? 'bg-indigo-600/10 border border-indigo-500/20 text-indigo-400 font-semibold'
               : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/40 border border-transparent'
