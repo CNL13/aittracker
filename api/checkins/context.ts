@@ -100,29 +100,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       };
     }
 
-    // 3. Check for exempt (user absence)
-    const absences = await sql`
-      SELECT id FROM user_absences
-      WHERE user_id = ${session.user.id}
-        AND start_date <= ${todayStr}
-        AND end_date >= ${todayStr}
-    `;
+    // 3+4+5. Chạy song song: kiểm tra nghỉ phép, ngày lễ, lịch làm việc
+    const [absences, nonWorkingDays, todaySchedule] = await Promise.all([
+      sql`
+        SELECT id FROM user_absences
+        WHERE user_id = ${session.user.id}
+          AND start_date <= ${todayStr}
+          AND end_date >= ${todayStr}
+      `,
+      sql`
+        SELECT name FROM non_working_days
+        WHERE work_date = ${todayStr}
+      `,
+      sql`
+        SELECT shift FROM work_schedules
+        WHERE user_id = ${session.user.id}
+          AND work_date = ${todayStr}::date
+        LIMIT 1
+      `
+    ]);
+
     const exempt = absences.length > 0;
-
-    // 4. Check for non-working day
-    const nonWorkingDays = await sql`
-      SELECT name FROM non_working_days
-      WHERE work_date = ${todayStr}
-    `;
     const nonWorkingDay = nonWorkingDays.length > 0;
-
-    // 5. Check if user has a work schedule for today (not 'off')
-    const todaySchedule = await sql`
-      SELECT shift FROM work_schedules
-      WHERE user_id = ${session.user.id}
-        AND work_date = ${todayStr}::date
-      LIMIT 1
-    `;
     const hasScheduleToday = todaySchedule.length > 0 && todaySchedule[0]!['shift'] !== 'off';
 
     return res.status(200).json({

@@ -56,6 +56,9 @@ interface NonWorkingDay {
 
 const MIN_SCHEDULE_DATE = '2025-01-01';
 const PAGE_SIZE = 20;
+const STAFF_SCHEDULE_TABLE_MIN_WIDTH = 1240;
+const STAFF_SCHEDULE_PERSON_COLUMN_WIDTH = 240;
+const STAFF_SCHEDULE_DAY_COLUMN_WIDTH = `calc((100% - ${STAFF_SCHEDULE_PERSON_COLUMN_WIDTH}px) / 7)`;
 
 const SHIFT_OPTIONS: Record<ShiftKey, { label: string; shortLabel: string; display: string; tone: string; worked: boolean }> = {
   morning: { label: 'Ca sáng', shortLabel: 'Sáng', display: '7:30-11:30', tone: 'emerald', worked: true },
@@ -829,14 +832,23 @@ export default function CalendarView({ auth }: { auth: any }) {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[800px] border-collapse text-left">
+          <table
+            className="w-full table-fixed border-collapse text-left"
+            style={{ minWidth: STAFF_SCHEDULE_TABLE_MIN_WIDTH }}
+          >
+            <colgroup>
+              <col style={{ width: STAFF_SCHEDULE_PERSON_COLUMN_WIDTH }} />
+              {weekDays.map((day) => (
+                <col key={`staff-day-col-${day.key}`} style={{ width: STAFF_SCHEDULE_DAY_COLUMN_WIDTH }} />
+              ))}
+            </colgroup>
             <thead>
               <tr className="border-b border-slate-800 text-xs uppercase tracking-wider text-slate-400">
-                <th className="w-44 px-4 py-3">Nhân sự</th>
+                <th className="px-4 py-4 whitespace-nowrap">Nhân sự</th>
                 {weekDays.map((day) => {
                   const holiday = holidayByDate.get(day.key);
                   return (
-                    <th key={day.key} className={`px-2 py-3 text-center ${holiday ? 'bg-red-500/10 text-red-300' : ''}`}>
+                    <th key={day.key} className={`px-2 py-4 text-center ${holiday ? 'bg-red-500/10 text-red-300' : ''}`}>
                       <span className="block font-bold">{weekdayShort(day.key)}</span>
                       <span className="block text-[11px] normal-case">{formatShortDate(day.key)}</span>
                       {holiday && <span className="mt-1 inline-block rounded bg-red-500/15 px-1.5 py-0.5 text-[9px]">Nghỉ lễ</span>}
@@ -860,9 +872,9 @@ export default function CalendarView({ auth }: { auth: any }) {
               ) : (
                 pagedPeople.map((person) => (
                   <tr key={person.id} className={person.id === user?.id ? 'bg-indigo-500/5' : ''}>
-                    <th className="px-4 py-3 align-top">
-                      <div className="text-sm font-bold text-slate-100">{person.fullName}</div>
-                      <div className="mt-1 text-xs text-slate-500">{person.position || person.department || `@${person.username}`}</div>
+                    <th className="px-4 py-3 align-middle">
+                      <div className="truncate text-sm font-bold text-slate-100">{person.fullName}</div>
+                      <div className="mt-1 truncate text-xs text-slate-500">{person.position || person.department || `@${person.username}`}</div>
                     </th>
                     {weekDays.map((day) => {
                       const entry = entryByUserDate.get(`${person.id}|${day.key}`);
@@ -874,7 +886,7 @@ export default function CalendarView({ auth }: { auth: any }) {
                             type="button"
                             disabled={!canEdit || day.key < MIN_SCHEDULE_DATE}
                             onClick={() => selectDateForRegistration(day.key, person.id)}
-                            className={`min-h-[48px] w-full rounded-lg border px-1 py-2 text-center text-xs font-semibold ${shiftToneClasses(entry?.shift)} ${
+                            className={`h-16 w-full overflow-hidden rounded-lg border px-2 py-2 text-center text-xs font-semibold leading-tight ${shiftToneClasses(entry?.shift)} ${
                               holiday ? 'ring-1 ring-red-500/30' : ''
                             } disabled:cursor-not-allowed disabled:opacity-60`}
                             title={holiday ? `${holiday.name} - bấm để sửa lịch ngày này` : 'Bấm để sửa lịch ngày này'}

@@ -65,5 +65,28 @@ export function prefetchRouteData(path: string, role?: string) {
 
   if (path === '/admin/logs') {
     prefetchData('/api/admin/audit?search=&action=&entity=&page=1&limit=50', 15 * 1000);
+    prefetchData('/api/admin/email-log?page=1&limit=50&status=&search=', 15 * 1000);
+  }
+
+  if (path === '/check-in') {
+    prefetchData('/api/checkins/context', 60 * 1000);
+    // Prefetch matrix cho tuần hiện tại
+    const today = new Date();
+    const currentDay = today.getDay();
+    const distanceToMon = currentDay === 0 ? -6 : 1 - currentDay;
+    const mon = new Date(today);
+    mon.setDate(today.getDate() + distanceToMon);
+    const sun = new Date(mon);
+    sun.setDate(mon.getDate() + 6);
+    const startDate = mon.toISOString().split('T')[0];
+    const endDate = sun.toISOString().split('T')[0];
+    prefetchData(`/api/checkins/history?startDate=${startDate}&endDate=${endDate}&limit=500`, 2 * 60 * 1000);
+  }
+
+  if (path === '/admin/dashboard') {
+    const today = new Date();
+    today.setMinutes(today.getMinutes() - today.getTimezoneOffset());
+    const dateStr = today.toISOString().split('T')[0];
+    prefetchData(`/api/dashboard/metrics?date=${dateStr}`, 30 * 1000);
   }
 }

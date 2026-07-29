@@ -13,6 +13,8 @@ import {
   Eye
 } from 'lucide-react';
 import type { Task, TaskBlocker } from '../types';
+import { cachedFetch, refreshCachedData } from '../utils/apiCache';
+import { useAppRefresh } from '../hooks/useAppRefresh';
 
 export default function AdminDashboardView() {
   const [date, setDate] = useState(() => {
@@ -41,41 +43,37 @@ export default function AdminDashboardView() {
   const [loadingTasks, setLoadingTasks] = useState(false);
 
   useEffect(() => {
-    fetch('/api/projects/list')
-      .then(r => r.json())
-      .then(data => {
-        if (data.projects) setProjects(data.projects);
-      })
+    cachedFetch('/api/projects/list', 5 * 60 * 1000)
+      .then(data => { if (data.projects) setProjects(data.projects); })
       .catch(console.error);
   }, []);
 
-  const fetchDashboardData = useCallback(async () => {
+  const dashUrl = (() => {
+    const params = new URLSearchParams();
+    if (date) params.append('date', date);
+    if (projectId) params.append('projectId', projectId);
+    return `/api/dashboard/metrics?${params.toString()}`;
+  })();
+
+  const fetchDashboardData = useCallback(async (force = false) => {
     setLoading(true);
     try {
-      const params = new URLSearchParams();
-      if (date) params.append('date', date);
-      if (projectId) params.append('projectId', projectId);
-
-      const res = await fetch(`/api/dashboard/metrics?${params.toString()}`);
-      if (res.ok) {
-        const data = await res.json();
-        setMetrics(data.metrics || {
-          totalActiveProjects: 0,
-          totalActiveTasks: 0,
-          totalOpenBlockers: 0,
-          totalExemptMembers: 0
-        });
-        setMembers(data.members || []);
-      }
+      const data = force
+        ? await refreshCachedData(dashUrl)
+        : await cachedFetch(dashUrl, 30 * 1000); // 30 giay
+      setMetrics(data.metrics || { totalActiveProjects: 0, totalActiveTasks: 0, totalOpenBlockers: 0, totalExemptMembers: 0 });
+      setMembers(data.members || []);
     } catch (err) {
       console.error(err);
     }
     setLoading(false);
-  }, [date, projectId]);
+  }, [dashUrl]);
 
   useEffect(() => {
     fetchDashboardData();
   }, [fetchDashboardData]);
+
+  useAppRefresh(() => fetchDashboardData(true), { minIntervalMs: 20000 });
 
   const openTasksDrillDown = async (member: any) => {
     setSelectedMemberForTasks(member);

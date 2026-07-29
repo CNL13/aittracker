@@ -1,6 +1,8 @@
 /* eslint-disable */
 // @ts-nocheck
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { cachedFetch, refreshCachedData, subscribeCache } from '../utils/apiCache';
+import { useAppRefresh } from '../hooks/useAppRefresh';
 import { 
   CheckCircle2, AlertTriangle, Save, X, Search, 
   Calendar as CalendarIcon, Edit, ChevronLeft, ChevronRight, 
@@ -88,21 +90,25 @@ export default function CheckInView({ auth }: { auth: any }) {
     return days;
   }, [weekOffset]);
 
-  // Fetch Member Context (Form data)
-  const fetchContext = async () => {
+  // Fetch Member Context (Form data) — dùng SWR cache (hiện data cũ ngay, refresh ngầm)
+  const contextUrl = '/api/checkins/context';
+  const fetchContext = async (force = false) => {
     try {
-      setLoadingContext(true);
-      const res = await fetch('/api/checkins/context');
-      if (res.ok) {
-        const data = await res.json();
-        setContext(data);
-        if (data.existingCheckIn) {
-          prefillForm(data.existingCheckIn);
-          setIsFormCollapsed(true); // Auto-collapse if already submitted today
-        } else {
-          loadDraft();
-          setIsFormCollapsed(false);
-        }
+      setLoadingContext(prev => {
+        // Nếu có data trong cache thì không hiện loading
+        const cached = !force;
+        return cached ? false : true;
+      });
+      const data = force
+        ? await refreshCachedData(contextUrl)
+        : await cachedFetch(contextUrl, 60 * 1000); // cache 60 giây (thấp vì dữ liệu thực thời)
+      setContext(data);
+      if (data.existingCheckIn) {
+        prefillForm(data.existingCheckIn);
+        setIsFormCollapsed(true);
+      } else {
+        loadDraft();
+        setIsFormCollapsed(false);
       }
     } catch (e) {
       console.error(e);
@@ -111,40 +117,46 @@ export default function CheckInView({ auth }: { auth: any }) {
     }
   };
 
-  // Fetch Calendar Matrix Data & Users List
-  const fetchMatrixData = async () => {
+  // Fetch Calendar Matrix Data & Users List — dùng SWR cache cho matrix (nhật ký tuần)
+  const fetchMatrixData = useCallback(async (force = false) => {
+    const startDate = weekDays[0].dateStr;
+    const endDate = weekDays[6].dateStr;
+    const histUrl = `/api/checkins/history?startDate=${startDate}&endDate=${endDate}&limit=500`;
+    const usersUrl = '/api/users/list?limit=100&status=active';
     setMatrixLoading(true);
     try {
-      const startDate = weekDays[0].dateStr;
-      const endDate = weekDays[6].dateStr;
-      
-      const [histRes, userRes] = await Promise.all([
-        fetch(`/api/checkins/history?startDate=${startDate}&endDate=${endDate}&limit=500`),
-        fetch('/api/users/list?limit=100&status=active')
+      const [histData, userData] = await Promise.all([
+        force ? refreshCachedData(histUrl) : cachedFetch(histUrl, 2 * 60 * 1000),  // 2 phút
+        cachedFetch(usersUrl, 5 * 60 * 1000),                                        // 5 phút
       ]);
-
-      if (histRes.ok) {
-        const hData = await histRes.json();
-        setMatrixData(Array.isArray(hData) ? hData : hData.data || []);
-      }
-      if (userRes.ok) {
-        const uData = await userRes.json();
-        setUsersList(uData.users || []);
-      }
+      setMatrixData(Array.isArray(histData) ? histData : histData?.data || []);
+      setUsersList(userData?.users || []);
     } catch (e) {
       console.error('Fetch matrix error:', e);
     } finally {
       setMatrixLoading(false);
     }
-  };
+  }, [weekDays]);
 
+  // Load song song cả context lẫn matrix ngay khi vào trang
   useEffect(() => {
-    fetchContext();
+    Promise.all([fetchContext(), fetchMatrixData()]);
   }, []);
 
+  // Re-fetch matrix khi đổi tuần (weekOffset)
   useEffect(() => {
-    fetchMatrixData();
+    if (weekDays) fetchMatrixData();
   }, [weekDays]);
+
+  // Subscribe cache context — cập nhật UI khi có refresh ngầm
+  useEffect(() => {
+    return subscribeCache(contextUrl, (data) => {
+      setContext(data);
+    });
+  }, []);
+
+  // Auto-refresh khi quay lại trang / đổi tab
+  useAppRefresh(() => Promise.all([fetchContext(true), fetchMatrixData(true)]), { minIntervalMs: 10000 });
 
   const prefillForm = (data: any) => {
     setNoActivity(data.noActivity || false);
