@@ -36,7 +36,7 @@ export default function MemberLayout({ auth, children }: { auth: AuthContextType
             </div>
             <div>
               <h1 className="text-sm font-bold tracking-tight text-white">AIT Tracker</h1>
-              <p className="text-[10px] text-slate-400">He thong giam sat tien do nghien cuu</p>
+              <p className="text-[10px] text-slate-400">Hệ thống giám sát tiến độ nghiên cứu</p>
             </div>
           </div>
 
@@ -52,7 +52,7 @@ export default function MemberLayout({ auth, children }: { auth: AuthContextType
             <button
               onClick={() => auth.logout()}
               className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-900/80 transition-colors"
-              title="Dang xuat"
+              title="Đăng xuất"
             >
               <LogOut className="h-4 w-4" />
             </button>
@@ -64,8 +64,7 @@ export default function MemberLayout({ auth, children }: { auth: AuthContextType
       <div className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 flex flex-col md:flex-row gap-5">
         {/* Sidebar Nav */}
         <aside className="w-full md:w-52 shrink-0 space-y-1">
-          <div className="px-3 py-1.5 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Danh muc</div>
-
+          <div className="px-3 py-1.5 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Danh mục</div>
           <button
             onClick={() => go('/')}
             onMouseEnter={() => { import('../../views/MemberHomeView'); warmRoute('/'); }}
@@ -75,21 +74,19 @@ export default function MemberLayout({ auth, children }: { auth: AuthContextType
               }`}
           >
             <UserIcon className="h-4 w-4 shrink-0" />
-            Trang chu ca nhan
+            Trang chủ cá nhân
           </button>
-
           <button
             onClick={() => go('/check-in')}
-            onMouseEnter={() => { import('../../app/CheckInView'); warmRoute('/check-in'); }}
+            onMouseEnter={() => import('../../app/CheckInView')}
             className={`w-full py-2.5 px-3 rounded-xl text-left text-xs font-medium flex items-center gap-2.5 transition-colors ${location.pathname === '/check-in'
               ? 'bg-indigo-600/10 border border-indigo-500/20 text-indigo-400 font-semibold'
               : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/40 border border-transparent'
               }`}
           >
             <CheckCircle2 className="h-4 w-4 shrink-0" />
-            Nop bao cao
+            Nộp báo cáo
           </button>
-
           <button
             onClick={() => go('/projects')}
             onMouseEnter={() => { import('../../components/projects/ProjectsView'); warmRoute('/projects'); }}
@@ -99,7 +96,7 @@ export default function MemberLayout({ auth, children }: { auth: AuthContextType
               }`}
           >
             <Briefcase className="h-4 w-4 shrink-0" />
-            Du an cua toi
+            Dự án của tôi
           </button>
 
           <button
@@ -111,9 +108,8 @@ export default function MemberLayout({ auth, children }: { auth: AuthContextType
               }`}
           >
             <CalendarDays className="h-4 w-4 shrink-0" />
-            Lich va cong
+            Lịch & công
           </button>
-
           <button
             onClick={() => go('/personnel')}
             onMouseEnter={() => { import('../../components/personnel/MemberPersonnelView'); warmRoute('/personnel'); }}
@@ -123,9 +119,10 @@ export default function MemberLayout({ auth, children }: { auth: AuthContextType
               }`}
           >
             <Users className="h-4 w-4 shrink-0" />
-            Nhan su
+            Nhân sự
           </button>
         </aside>
+
 
         {/* Member Content Area */}
         <main className="flex-1 min-w-0">
@@ -135,8 +132,9 @@ export default function MemberLayout({ auth, children }: { auth: AuthContextType
 
       {/* Footer */}
       <footer className="border-t border-slate-900 py-6 mt-12 text-center text-xs text-slate-500">
-        <p>2026 AIT Work Tracker. All rights reserved.</p>
+        <p> 2026 AIT Work Tracker. All rights reserved.</p>
       </footer>
     </div>
   );
 }
+

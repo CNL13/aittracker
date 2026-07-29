@@ -87,11 +87,7 @@ export default function App() {
         prefetchRouteData('/tasks', data.user?.role);
         prefetchRouteData('/projects', data.user?.role);
         prefetchRouteData('/calendar', data.user?.role);
-        prefetchRouteData('/check-in', data.user?.role); // Prefetch check-in context sau login
-        if (data.user?.role === 'admin') {
-          prefetchRouteData('/admin/users', data.user?.role);
-          prefetchRouteData('/admin/dashboard', data.user?.role);
-        }
+        if (data.user?.role === 'admin') prefetchRouteData('/admin/users', data.user?.role);
         return { success: true };
       } else {
         return { success: false, error: data.error || 'Đã xảy ra lỗi khi đăng nhập.' };

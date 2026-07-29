@@ -236,14 +236,6 @@ export default function ProjectsView({ auth }: { auth: AuthContextType }) {
               <div
                 key={project.id}
                 onClick={() => navigate(`/projects/${project.id}`)}
-                onMouseEnter={() => {
-                  // Prefetch chi tiet du an khi hover
-                  import('../projects/ProjectDetailView');
-                  import('../../utils/apiCache').then(({ prefetchData }) => {
-                    prefetchData(`/api/projects/${project.id}`, 30 * 1000);
-                    prefetchData(`/api/tasks/my?projectId=${project.id}&limit=200`, 20 * 1000);
-                  });
-                }}
                 className="group cursor-pointer p-5 bg-slate-900/35 border border-slate-800/80 rounded-2xl hover:border-slate-700/80 transition-all duration-300 hover:shadow-xl hover:shadow-indigo-500/[0.02] flex flex-col justify-between"
               >
                 <div className="space-y-4">
